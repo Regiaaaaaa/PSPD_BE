@@ -7,33 +7,9 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 
-class UmumController extends Controller
+class PetugasController extends Controller
 {
-    // Register
-    public function register(Request $request)
-    {
-        $request->validate([
-            'name' => 'required|string',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|min:6',
-            'jabatan' => 'required|string'
-        ]);
-
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'role' => 'umum',
-            'jabatan' => $request->jabatan
-        ]);
-
-        return response()->json([
-            'message' => 'Registrasi umum berhasil',
-            'user' => $user
-        ], 201);
-    }
-
-    // Login
+    // Login petugas ( admin & operator )
     public function login(Request $request)
     {
         $request->validate([
@@ -41,9 +17,8 @@ class UmumController extends Controller
             'password' => 'required'
         ]);
 
-    
         $user = User::where('email', $request->email)
-                    ->where('role', 'umum')
+                    ->whereIn('role', ['admin', 'operator'])
                     ->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
@@ -56,7 +31,7 @@ class UmumController extends Controller
         $user->tokens()->delete();
 
         // Buat token 
-        $token = $user->createToken('umum-token')->plainTextToken;
+        $token = $user->createToken('petugas-token')->plainTextToken;
 
         return response()->json([
             'message' => 'Login berhasil',
@@ -65,7 +40,7 @@ class UmumController extends Controller
         ]);
     }
 
-    // Logout 
+    // Logout
     public function logout(Request $request)
     {
         $request->user()->currentAccessToken()->delete();

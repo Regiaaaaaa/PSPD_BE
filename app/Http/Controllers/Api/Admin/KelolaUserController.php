@@ -9,10 +9,10 @@ use Illuminate\Support\Facades\Hash;
 
 class KelolaUserController extends Controller
 {
-    // List user 
+    // Daftar user 
     public function index()
     {
-        $users = User::whereIn('role', ['operator', 'siswa', 'umum'])->get();
+        $users = User::whereIn('role', ['operator', 'staff', 'siswa'])->get();
 
         return response()->json([
             'message' => 'List user berhasil diambil',
@@ -20,10 +20,10 @@ class KelolaUserController extends Controller
         ]);
     }
 
-    // List detail user
+    // Daftar detail user
     public function show($id)
     {
-        $user = User::whereIn('role', ['operator', 'siswa', 'umum'])
+        $user = User::whereIn('role', ['operator', 'staff', 'siswa'])
                     ->findOrFail($id);
 
         return response()->json([
@@ -54,6 +54,32 @@ class KelolaUserController extends Controller
         ], 201);
     }
 
+    // Buat akun Staff
+    public function createStaff(Request $request)
+    {
+        $request->validate([
+            'nomor_induk' => 'required|string|unique:users,nomor_induk',
+            'name' => 'required|string',
+            'email' => 'required|email|unique:users,email',
+            'password' => 'required|min:6',
+            'jabatan' => 'required|string'
+        ]);
+
+        $user = User::create([
+            'nomor_induk' => $request->nomor_induk,
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+            'role' => 'staff',
+            'jabatan' => $request->jabatan
+        ]);
+
+        return response()->json([
+            'message' => 'Akun staff berhasil dibuat',
+            'data' => $user
+        ], 201);
+    }
+
     // Buat akun siswa
     public function createSiswa(Request $request)
     {
@@ -80,34 +106,10 @@ class KelolaUserController extends Controller
         ], 201);
     }
 
-    // Buat akun umum
-    public function createUmum(Request $request)
-    {
-        $request->validate([
-            'name' => 'required|string',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|min:6',
-            'jabatan' => 'required|string'
-        ]);
-
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'role' => 'umum',
-            'jabatan' => $request->jabatan
-        ]);
-
-        return response()->json([
-            'message' => 'Akun umum berhasil dibuat',
-            'data' => $user
-        ], 201);
-    }
-
-    // Update data user
+    // Ubah data user
     public function update(Request $request, $id)
     {
-        $user = User::whereIn('role', ['operator', 'siswa', 'umum'])
+        $user = User::whereIn('role', ['operator', 'staff', 'siswa'])
                     ->findOrFail($id);
 
         $request->validate([
@@ -126,14 +128,14 @@ class KelolaUserController extends Controller
             $user->password = Hash::make($request->password);
         }
 
-        // khusus siswa
+        // Khusus siswa
         if ($user->role == 'siswa') {
             $user->kelas = $request->kelas;
             $user->nomor_induk = $request->nomor_induk;
         }
 
-        // khusus umum
-        if ($user->role == 'umum') {
+        // Khusus staff
+        if ($user->role == 'staff') {
             $user->jabatan = $request->jabatan;
         }
 
@@ -148,7 +150,7 @@ class KelolaUserController extends Controller
     // Hapus user
     public function destroy($id)
     {
-        $user = User::whereIn('role', ['operator', 'siswa', 'umum'])
+        $user = User::whereIn('role', ['operator', 'staff', 'siswa'])
                     ->findOrFail($id);
 
         $user->delete();

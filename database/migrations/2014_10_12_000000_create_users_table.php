@@ -14,7 +14,7 @@ return new class extends Migration {
             $table->string('email')->unique();
             $table->string('password');
             $table->rememberToken();
-            $table->enum('role', ['admin', 'operator', 'siswa', 'umum']);
+            $table->enum('role', ['admin', 'operator', 'staff', 'siswa']);
             $table->string('jabatan')->nullable();
             $table->string('kelas')->nullable();
             $table->timestamps();

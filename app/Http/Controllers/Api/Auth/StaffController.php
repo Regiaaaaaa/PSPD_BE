@@ -9,7 +9,33 @@ use Illuminate\Support\Facades\Hash;
 
 class StaffController extends Controller
 {
-    // Login Staff ( admin & operator )
+    // Register
+    public function register(Request $request)
+    {
+        $request->validate([
+            'nomor_induk' => 'required|string|unique:users,nomor_induk',
+            'name' => 'required|string',
+            'email' => 'required|email|unique:users,email',
+            'password' => 'required|min:6',
+            'jabatan' => 'required|string'
+        ]);
+
+        $user = User::create([
+            'nomor_induk' => $request->nomor_induk,
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+            'role' => 'staff',
+            'jabatan' => $request->jabatan
+        ]);
+
+        return response()->json([
+            'message' => 'Registrasi staff berhasil',
+            'user' => $user
+        ], 201);
+    }
+
+    // Login
     public function login(Request $request)
     {
         $request->validate([
@@ -17,8 +43,9 @@ class StaffController extends Controller
             'password' => 'required'
         ]);
 
+    
         $user = User::where('email', $request->email)
-                    ->whereIn('role', ['admin', 'operator'])
+                    ->where('role', 'staff')
                     ->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
@@ -40,7 +67,7 @@ class StaffController extends Controller
         ]);
     }
 
-    // Logout
+    // Logout 
     public function logout(Request $request)
     {
         $request->user()->currentAccessToken()->delete();

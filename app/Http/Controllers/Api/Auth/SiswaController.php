@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Hash;
 
 class SiswaController extends Controller
 {
-    // Register Siswa
+    // Register 
     public function register(Request $request)
     {
         $request->validate([
@@ -35,7 +35,7 @@ class SiswaController extends Controller
         ], 201);
     }
 
-    // Login Siswa
+    // Login 
     public function login(Request $request)
     {
         $request->validate([
