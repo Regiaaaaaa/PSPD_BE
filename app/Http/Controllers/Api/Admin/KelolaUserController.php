@@ -159,4 +159,26 @@ class KelolaUserController extends Controller
             'message' => 'User berhasil dihapus'
         ]);
     }
+
+    // Reset password pengguna 
+    public function resetPassword($id)
+    {
+        $user = User::whereIn('role', ['operator', 'staff', 'siswa'])
+                    ->findOrFail($id);
+
+        $defaultPassword = "smktb123";
+        $user->password = Hash::make($defaultPassword);
+        $user->save();
+
+        return response()->json([
+            'message' => 'Password berhasil direset ke default',
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role,
+            ],
+            'default_password' => $defaultPassword
+        ]);
+    }
 }
