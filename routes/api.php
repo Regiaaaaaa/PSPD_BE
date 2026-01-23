@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\Auth\SiswaController;
 use App\Http\Controllers\Api\Auth\StaffController;
 use App\Http\Controllers\Api\Admin\CategoryController;
 use App\Http\Controllers\Api\Admin\BookController;
+use App\Http\Controllers\Api\OtpController;
 
 
 /*
@@ -31,6 +32,11 @@ Route::post('/siswa/login', [SiswaController::class, 'login']);
 // Login Register Staff
 Route::post('staff/register', [StaffController::class, 'register']);
 Route::post('staff/login', [StaffController::class, 'login']);
+
+// Otp Forgot Password 
+Route::post('/send-otp', [OtpController::class, 'sendOtp']);
+Route::post('/verify-otp', [OtpController::class, 'verifyOtp']);
+Route::post('/reset-password', [OtpController::class, 'resetPassword']);
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
