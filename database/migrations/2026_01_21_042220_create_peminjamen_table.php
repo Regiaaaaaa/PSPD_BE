@@ -11,10 +11,27 @@ return new class extends Migration {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
             $table->foreignId('book_id')->constrained('books')->cascadeOnDelete();
+
+            $table->text('kepentingan')->nullable();
+            $table->text('pesan_ditolak')->nullable();
+
             $table->date('tgl_pinjam')->nullable();
             $table->date('tgl_deadline');
             $table->date('tgl_kembali')->nullable();
-            $table->enum('status', ['pending', 'dipinjam', 'kembali', 'ditolak']);
+
+            $table->enum('status', ['menunggu', 'dipinjam', 'kembali', 'ditolak'])
+                ->default('menunggu');
+
+            $table->foreignId('disetujui_oleh')
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
+
+            $table->foreignId('diterima_oleh')
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
+
             $table->timestamps();
         });
     }
