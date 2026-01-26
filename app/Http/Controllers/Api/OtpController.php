@@ -13,7 +13,7 @@ use App\Mail\OtpMail;
 
 class OtpController extends Controller
 {
-    // 1️⃣ Kirim OTP
+    // Kirim OTP
     public function sendOtp(Request $request)
     {
         $request->validate([
@@ -51,7 +51,7 @@ class OtpController extends Controller
         ]);
     }
 
-    // 2️⃣ Verifikasi OTP
+    // Verifikasi OTP
     public function verifyOtp(Request $request)
     {
         $request->validate([
@@ -89,7 +89,7 @@ class OtpController extends Controller
         ]);
     }
 
-    // 3️⃣ Reset Password
+    // Reset Password
     public function resetPassword(Request $request)
     {
         $request->validate([
