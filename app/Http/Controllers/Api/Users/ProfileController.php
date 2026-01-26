@@ -10,11 +10,12 @@ use Illuminate\Validation\Rule;
 
 class ProfileController extends Controller
 {
-    // Update profile
+    // Ubah profile 
     public function updateProfile(Request $request)
     {
         /** @var \App\Models\User $user */
         $user = Auth::user();
+
         if (!in_array($user->role, ['staff', 'siswa'])) {
             abort(403, 'Role tidak diizinkan');
         }
@@ -26,36 +27,55 @@ class ProfileController extends Controller
         // khusus siswa
         if ($user->role === 'siswa') {
             $rules['kelas'] = 'nullable|string|max:50';
-            $rules['nomor_induk'] = [
+            $rules['tingkat'] = 'nullable|in:X,XI,XII';
+            $rules['jurusan'] = 'nullable|in:RPL,ANIMASI,TJKT,TE,PSPT';
+            $rules['nomor_induk_siswa'] = [
                 'nullable',
                 'string',
-                Rule::unique('users', 'nomor_induk')->ignore($user->id),
+                \Illuminate\Validation\Rule::unique('siswas', 'nomor_induk_siswa')
+                    ->ignore(optional($user->siswa)->id),
             ];
         }
 
         // khusus staff
         if ($user->role === 'staff') {
             $rules['jabatan'] = 'nullable|string|max:100';
+            $rules['nomor_induk_pegawai'] = [
+                'nullable',
+                'string',
+                \Illuminate\Validation\Rule::unique('staff', 'nomor_induk_pegawai')
+                    ->ignore(optional($user->staff)->id),
+            ];
         }
 
         $data = $request->validate($rules);
 
-        $user->name = $data['name'];
+        // update tabel users 
+        $user->update([
+            'name' => $data['name'],
+        ]);
 
-        if ($user->role === 'siswa') {
-            $user->kelas = $data['kelas'] ?? $user->kelas;
-            $user->nomor_induk = $data['nomor_induk'] ?? $user->nomor_induk;
+        // update tabel siswa
+        if ($user->role === 'siswa' && $user->siswa) {
+            $user->siswa->update([
+                'kelas' => $data['kelas'] ?? $user->siswa->kelas,
+                'tingkat' => $data['tingkat'] ?? $user->siswa->tingkat,
+                'jurusan' => $data['jurusan'] ?? $user->siswa->jurusan,
+                'nomor_induk_siswa' => $data['nomor_induk_siswa'] ?? $user->siswa->nomor_induk_siswa,
+            ]);
         }
 
-        if ($user->role === 'staff') {
-            $user->jabatan = $data['jabatan'] ?? $user->jabatan;
+        // update tabel staff
+        if ($user->role === 'staff' && $user->staff) {
+            $user->staff->update([
+                'jabatan' => $data['jabatan'] ?? $user->staff->jabatan,
+                'nomor_induk_pegawai' => $data['nomor_induk_pegawai'] ?? $user->staff->nomor_induk_pegawai,
+            ]);
         }
-
-        $user->save();
 
         return response()->json([
             'message' => 'Profile berhasil diperbarui',
-            'data' => $user
+            'data' => $user->load(['siswa', 'staff']),
         ]);
     }
 
@@ -65,7 +85,6 @@ class ProfileController extends Controller
         /** @var \App\Models\User $user */
         $user = Auth::user();
 
-        // hanya staff & siswa
         if (!in_array($user->role, ['staff', 'siswa'])) {
             abort(403, 'Role tidak diizinkan');
         }
@@ -75,15 +94,15 @@ class ProfileController extends Controller
             'password' => 'required|min:6|confirmed',
         ]);
 
-        // cek password lama
         if (!Hash::check($request->current_password, $user->password)) {
             return response()->json([
                 'message' => 'Password lama tidak sesuai'
             ], 422);
         }
 
-        $user->password = Hash::make($request->password);
-        $user->save();
+        $user->update([
+            'password' => Hash::make($request->password),
+        ]);
 
         return response()->json([
             'message' => 'Password berhasil diubah'
