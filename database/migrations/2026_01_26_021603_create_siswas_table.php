@@ -17,7 +17,7 @@ return new class extends Migration {
             $table->string('nomor_induk_siswa')->unique();
             $table->enum('tingkat', ['X', 'XI', 'XII']);
             $table->enum('jurusan', ['RPL', 'ANIMASI', 'TJKT', 'TE', 'PSPT']);
-            $table->string('kelas');
+            $table->integer('kelas');
             $table->timestamps();
         });
     }

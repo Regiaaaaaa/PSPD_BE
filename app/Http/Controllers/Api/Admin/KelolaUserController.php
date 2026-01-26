@@ -100,9 +100,9 @@ class KelolaUserController extends Controller
             'password'          => 'required|min:6',
             'nomor_induk_siswa' => 'required|string|unique:siswas,nomor_induk_siswa',
 
-            'tingkat' => 'required|in:X,XI,XII',
-            'jurusan' => 'required|in:RPL,ANIMASI,TJKT,TE,PSPT',
-            'kelas'   => 'required|string',
+            'tingkat'           => 'required|in:X,XI,XII',
+            'jurusan'           => 'required|in:RPL,ANIMASI,TJKT,TE,PSPT',
+            'kelas'             => 'required|integer|min:1|max:5',
         ]);
 
         DB::transaction(function () use ($request) {
@@ -139,7 +139,7 @@ class KelolaUserController extends Controller
 
             'tingkat' => 'sometimes|in:X,XI,XII',
             'jurusan' => 'sometimes|in:RPL,ANIMASI,TJKT,TE,PSPT',
-            'kelas'   => 'sometimes|string',
+            'kelas'   => 'sometimes|integer|min:1|max:5',
             'nomor_induk_siswa' => 'sometimes|string|unique:siswas,nomor_induk_siswa,' . optional($user->siswa)->id,
 
 

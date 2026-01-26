@@ -26,7 +26,7 @@ class ProfileController extends Controller
 
         // khusus siswa
         if ($user->role === 'siswa') {
-            $rules['kelas'] = 'nullable|string|max:50';
+            $rules['kelas'] = 'nullable|integer|min:1|max:5';
             $rules['tingkat'] = 'nullable|in:X,XI,XII';
             $rules['jurusan'] = 'nullable|in:RPL,ANIMASI,TJKT,TE,PSPT';
             $rules['nomor_induk_siswa'] = [

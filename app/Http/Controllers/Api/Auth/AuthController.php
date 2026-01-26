@@ -61,7 +61,7 @@ class AuthController extends Controller
             'password'          => 'required|min:6',
             'tingkat'           => 'required|in:X,XI,XII',
             'jurusan'           => 'required|in:RPL,ANIMASI,TJKT,TE,PSPT',
-            'kelas'             => 'required|string',
+            'kelas'             => 'required|integer|min:1|max:5',
         ]);
 
         DB::transaction(function () use ($request) {
