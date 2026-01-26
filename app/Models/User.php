@@ -15,13 +15,10 @@ class User extends Authenticatable
      * The attributes that are mass assignable.
      */
     protected $fillable = [
-        'nomor_induk',
         'name',
         'email',
         'password',
         'role',
-        'jabatan',
-        'kelas',
     ];
 
     /**
@@ -38,6 +35,17 @@ class User extends Authenticatable
     protected $casts = [
         'password' => 'hashed',
     ];
+
+    public function siswa()
+    {
+        return $this->hasOne(Siswa::class);
+    }
+
+    
+    public function staff()
+    {
+        return $this->hasOne(Staff::class);
+    }
 
     // User punya banyak peminjaman
     public function peminjamans()

@@ -12,10 +12,28 @@ class Peminjaman extends Model
     protected $fillable = [
         'user_id',
         'book_id',
+
+
+        'kepentingan',
+        'pesan_ditolak',
+
+
         'tgl_pinjam',
         'tgl_deadline',
         'tgl_kembali',
-        'status'
+
+
+        'status',
+
+
+        'disetujui_oleh',
+        'diterima_oleh',
+    ];
+
+        protected $casts = [
+        'tgl_pinjam' => 'date',
+        'tgl_deadline' => 'date',
+        'tgl_kembali' => 'date',
     ];
 
     public function user()
@@ -26,6 +44,19 @@ class Peminjaman extends Model
     public function book()
     {
         return $this->belongsTo(Book::class);
+    }
+
+    // Operator yang menyetujui
+    public function disetujuiOleh()
+    {
+    return $this->belongsTo(User::class, 'disetujui_oleh');
+    }
+
+
+    // Operator yang menerima pengembalian
+    public function diterimaOleh()
+    {
+    return $this->belongsTo(User::class, 'diterima_oleh');
     }
 
     public function denda()
