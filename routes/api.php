@@ -3,9 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-use App\Http\Controllers\Api\Auth\PetugasController;
-use App\Http\Controllers\Api\Auth\SiswaController;
-use App\Http\Controllers\Api\Auth\StaffController;
+use App\Http\Controllers\Api\Auth\AuthController;
 use App\Http\Controllers\Api\OtpController;
 
 use App\Http\Controllers\Api\Admin\KelolaUserController;
@@ -26,16 +24,14 @@ use App\Http\Controllers\Api\Users\ProfileController;
 */
 
 
-// Login Petugas (Admin & Operator)
-Route::post('/petugas/login', [PetugasController::class, 'login']);
+// Auth 
+Route::post('/login', [AuthController::class, 'login']);
+Route::post('/register/siswa', [AuthController::class, 'registerSiswa']);
+Route::post('/register/staff', [AuthController::class, 'registerStaff']);
 
-// Auth Siswa
-Route::post('/siswa/register', [SiswaController::class, 'register']);
-Route::post('/siswa/login', [SiswaController::class, 'login']);
+// Logout 
+Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logout']);
 
-// Auth Staff
-Route::post('/staff/register', [StaffController::class, 'register']);
-Route::post('/staff/login', [StaffController::class, 'login']);
 
 // OTP Forgot Password
 Route::post('/send-otp', [OtpController::class, 'sendOtp']);
