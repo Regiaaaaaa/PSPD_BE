@@ -55,7 +55,7 @@ class AuthController extends Controller
     public function registerSiswa(Request $request)
     {
         $request->validate([
-            'nomor_induk_siswa' => 'required|string|unique:siswas,nomor_induk_siswa',
+            'nomor_induk_siswa' => 'required|digits:10|unique:siswas,nomor_induk_siswa',
             'name'              => 'required|string',
             'email'             => 'required|email|unique:users,email',
             'password'          => 'required|min:6',
@@ -94,7 +94,7 @@ class AuthController extends Controller
             'email'                => 'required|email|unique:users,email',
             'password'             => 'required|min:6',
             'jabatan'              => 'required|string',
-            'nomor_induk_pegawai'  => 'nullable|string|unique:staff,nomor_induk_pegawai',
+            'nomor_induk_pegawai'  => 'nullable|digits:18|unique:staff,nomor_induk_pegawai',
         ]);
 
         DB::transaction(function () use ($request) {

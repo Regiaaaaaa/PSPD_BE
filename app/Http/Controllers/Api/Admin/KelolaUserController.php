@@ -68,7 +68,7 @@ class KelolaUserController extends Controller
             'email'               => 'required|email|unique:users,email',
             'password'            => 'required|min:6',
             'jabatan'             => 'required|string',
-            'nomor_induk_pegawai' => 'nullable|string|unique:staff,nomor_induk_pegawai',
+            'nomor_induk_pegawai' => 'nullable|digits:18|unique:staff,nomor_induk_pegawai',
         ]);
 
         DB::transaction(function () use ($request) {
@@ -98,7 +98,7 @@ class KelolaUserController extends Controller
             'name'              => 'required|string',
             'email'             => 'required|email|unique:users,email',
             'password'          => 'required|min:6',
-            'nomor_induk_siswa' => 'required|string|unique:siswas,nomor_induk_siswa',
+            'nomor_induk_siswa' => 'required|digits:10|unique:siswas,nomor_induk_siswa',
 
             'tingkat'           => 'required|in:X,XI,XII',
             'jurusan'           => 'required|in:RPL,ANIMASI,TJKT,TE,PSPT',
@@ -140,12 +140,12 @@ class KelolaUserController extends Controller
             'tingkat' => 'sometimes|in:X,XI,XII',
             'jurusan' => 'sometimes|in:RPL,ANIMASI,TJKT,TE,PSPT',
             'kelas'   => 'sometimes|integer|min:1|max:5',
-            'nomor_induk_siswa' => 'sometimes|string|unique:siswas,nomor_induk_siswa,' . optional($user->siswa)->id,
+            'nomor_induk_siswa' => 'sometimes|digits:10|unique:siswas,nomor_induk_siswa,' . optional($user->siswa)->id,
 
 
             'jabatan' => 'sometimes|string',
             'nomor_induk_pegawai' =>
-                'sometimes|nullable|string|unique:staff,nomor_induk_pegawai,' . optional($user->staff)->id,
+                'sometimes|nullable|digits:18|unique:staff,nomor_induk_pegawai,' . optional($user->staff)->id,
         ]);
 
         $user->update([

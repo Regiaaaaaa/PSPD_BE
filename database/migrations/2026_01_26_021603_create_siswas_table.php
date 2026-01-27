@@ -14,7 +14,7 @@ return new class extends Migration {
                   ->cascadeOnDelete()
                   ->unique();
 
-            $table->string('nomor_induk_siswa')->unique();
+            $table->string('nomor_induk_siswa', 10)->unique();
             $table->enum('tingkat', ['X', 'XI', 'XII']);
             $table->enum('jurusan', ['RPL', 'ANIMASI', 'TJKT', 'TE', 'PSPT']);
             $table->integer('kelas');

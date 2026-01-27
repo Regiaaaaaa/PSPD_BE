@@ -21,39 +21,43 @@ class ProfileController extends Controller
         }
 
         $rules = [
-            'name' => 'required|string|max:255',
+            'name' => 'sometimes|required|string|max:255',
         ];
 
         // khusus siswa
         if ($user->role === 'siswa') {
-            $rules['kelas'] = 'nullable|integer|min:1|max:5';
-            $rules['tingkat'] = 'nullable|in:X,XI,XII';
-            $rules['jurusan'] = 'nullable|in:RPL,ANIMASI,TJKT,TE,PSPT';
+            $rules['kelas'] = 'sometimes|nullable|integer|min:1|max:5';
+            $rules['tingkat'] = 'sometimes|nullable|in:X,XI,XII';
+            $rules['jurusan'] = 'sometimes|nullable|in:RPL,ANIMASI,TJKT,TE,PSPT';
             $rules['nomor_induk_siswa'] = [
+                'sometimes',
                 'nullable',
-                'string',
-                \Illuminate\Validation\Rule::unique('siswas', 'nomor_induk_siswa')
+                'digits:10',
+                Rule::unique('siswas', 'nomor_induk_siswa')
                     ->ignore(optional($user->siswa)->id),
             ];
         }
 
         // khusus staff
         if ($user->role === 'staff') {
-            $rules['jabatan'] = 'nullable|string|max:100';
+            $rules['jabatan'] = 'sometimes|nullable|string|max:100';
             $rules['nomor_induk_pegawai'] = [
+                'sometimes',
                 'nullable',
-                'string',
-                \Illuminate\Validation\Rule::unique('staff', 'nomor_induk_pegawai')
+                'digits:18',
+                Rule::unique('staff', 'nomor_induk_pegawai')
                     ->ignore(optional($user->staff)->id),
             ];
         }
 
         $data = $request->validate($rules);
 
-        // update tabel users 
-        $user->update([
-            'name' => $data['name'],
-        ]);
+        // update tabel users (hanya kalau name dikirim)
+        if (isset($data['name'])) {
+            $user->update([
+                'name' => $data['name'],
+            ]);
+        }
 
         // update tabel siswa
         if ($user->role === 'siswa' && $user->siswa) {

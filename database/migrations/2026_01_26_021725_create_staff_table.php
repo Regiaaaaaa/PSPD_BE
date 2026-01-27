@@ -15,7 +15,7 @@ return new class extends Migration {
                 ->cascadeOnDelete()
                 ->unique();
 
-            $table->string('nomor_induk_pegawai')->unique()->nullable();
+            $table->string('nomor_induk_pegawai', 18)->unique()->nullable();
             $table->string('jabatan');
 
             $table->timestamps();
