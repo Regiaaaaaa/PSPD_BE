@@ -9,6 +9,7 @@ class Siswa extends Model
 {
     use HasFactory;
 
+    protected $table = 'siswa';
     protected $fillable = [
         'user_id',
         'nomor_induk_siswa',

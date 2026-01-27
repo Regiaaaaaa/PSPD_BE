@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\Auth\AuthController;
 use App\Http\Controllers\Api\OtpController;
 
-use App\Http\Controllers\Api\Admin\KelolaUserController;
+use App\Http\Controllers\Api\Admin\ManageUserController;
 use App\Http\Controllers\Api\Admin\CategoryController;
 use App\Http\Controllers\Api\Admin\BookController;
 
@@ -48,14 +48,14 @@ Route::middleware('auth:sanctum')->get('/me', function (Request $request) {
 Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(function () {
 
         // Kelola Akun User
-        Route::get('/users', [KelolaUserController::class, 'index']);
-        Route::get('/users/{id}', [KelolaUserController::class, 'show']);
-        Route::post('/users/operator', [KelolaUserController::class, 'createOperator']);
-        Route::post('/users/staff', [KelolaUserController::class, 'createStaff']);
-        Route::post('/users/siswa', [KelolaUserController::class, 'createSiswa']);
-        Route::put('/users/{id}', [KelolaUserController::class, 'update']);
-        Route::delete('/users/{id}', [KelolaUserController::class, 'destroy']);
-        Route::post('/users/{id}/reset-password', [KelolaUserController::class, 'resetPassword']);
+        Route::get('/users', [ManageUserController::class, 'index']);
+        Route::get('/users/{id}', [ManageUserController::class, 'show']);
+        Route::post('/users/operator', [ManageUserController::class, 'createOperator']);
+        Route::post('/users/staff', [ManageUserController::class, 'createStaff']);
+        Route::post('/users/siswa', [ManageUserController::class, 'createSiswa']);
+        Route::put('/users/{id}', [ManageUserController::class, 'update']);
+        Route::delete('/users/{id}', [ManageUserController::class, 'destroy']);
+        Route::post('/users/{id}/reset-password', [ManageUserController::class, 'resetPassword']);
 
         // Kelola Kategori
         Route::get('/categories', [CategoryController::class, 'index']);

@@ -9,6 +9,7 @@ class Denda extends Model
 {
     use HasFactory;
 
+    protected $table = 'denda';
     protected $fillable = [
         'peminjaman_id',
         'nominal',

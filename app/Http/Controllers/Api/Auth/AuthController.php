@@ -26,11 +26,12 @@ class AuthController extends Controller
             ->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
-            throw ValidationException::withMessages([
-                'email' => ['Email atau password salah'],
-            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Email atau password salah'
+            ], 401);
         }
-
+        
         $user->tokens()->delete();
 
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -55,7 +56,7 @@ class AuthController extends Controller
     public function registerSiswa(Request $request)
     {
         $request->validate([
-            'nomor_induk_siswa' => 'required|digits:10|unique:siswas,nomor_induk_siswa',
+            'nomor_induk_siswa' => 'required|digits:10|unique:siswa,nomor_induk_siswa',
             'name'              => 'required|string',
             'email'             => 'required|email|unique:users,email',
             'password'          => 'required|min:6',

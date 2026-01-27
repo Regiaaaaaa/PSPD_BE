@@ -9,9 +9,10 @@ class Peminjaman extends Model
 {
     use HasFactory;
 
+    protected $table = 'peminjaman';
     protected $fillable = [
         'user_id',
-        'book_id',
+        'buku_id',
 
 
         'kepentingan',
@@ -41,9 +42,9 @@ class Peminjaman extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function book()
+    public function buku()
     {
-        return $this->belongsTo(Book::class);
+        return $this->belongsTo(Buku::class);
     }
 
     // Operator yang menyetujui

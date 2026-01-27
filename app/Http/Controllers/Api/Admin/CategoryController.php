@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Category;
+use App\Models\Kategori;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -12,12 +12,12 @@ class CategoryController extends Controller
     // Daftar kategori
     public function index()
     {
-        $categories = Category::all();
+        $kategori = Kategori::all();
 
         return response()->json([
             'status' => true,
             'message' => 'List semua kategori',
-            'data' => $categories
+            'data' => $kategori
         ], 200);
     }
 
@@ -36,23 +36,23 @@ class CategoryController extends Controller
             ], 422);
         }
 
-        $category = Category::create([
+        $kategori = Kategori::create([
             'nama_kategori' => $request->nama_kategori
         ]);
 
         return response()->json([
             'status' => true,
             'message' => 'Kategori berhasil ditambahkan',
-            'data' => $category
+            'data' => $kategori
         ], 201);
     }
 
     // Daftar detail kategori
     public function show($id)
     {
-        $category = Category::find($id);
+        $kategori = Kategori::find($id);
 
-        if (!$category) {
+        if (!$kategori) {
             return response()->json([
                 'status' => false,
                 'message' => 'Kategori tidak ditemukan'
@@ -62,16 +62,16 @@ class CategoryController extends Controller
         return response()->json([
             'status' => true,
             'message' => 'Detail kategori',
-            'data' => $category
+            'data' => $kategori
         ], 200);
     }
 
     // Ubah data kategori
     public function update(Request $request, $id)
     {
-        $category = Category::find($id);
+        $kategori = Kategori::find($id);
 
-        if (!$category) {
+        if (!$kategori) {
             return response()->json([
                 'status' => false,
                 'message' => 'Kategori tidak ditemukan'
@@ -90,30 +90,30 @@ class CategoryController extends Controller
             ], 422);
         }
 
-        $category->update([
+        $kategori->update([
             'nama_kategori' => $request->nama_kategori
         ]);
 
         return response()->json([
             'status' => true,
             'message' => 'Kategori berhasil diupdate',
-            'data' => $category
+            'data' => $kategori
         ], 200);
     }
 
     // Hapus kategori
     public function destroy($id)
     {
-        $category = Category::find($id);
+        $kategori = Kategori::find($id);
 
-        if (!$category) {
+        if (!$kategori) {
             return response()->json([
                 'status' => false,
                 'message' => 'Kategori tidak ditemukan'
             ], 404);
         }
 
-        $category->delete();
+        $kategori->delete();
 
         return response()->json([
             'status' => true,

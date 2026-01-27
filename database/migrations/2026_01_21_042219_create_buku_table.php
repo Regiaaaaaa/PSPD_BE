@@ -7,15 +7,15 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::create('books', function (Blueprint $table) {
+        Schema::create('buku', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('category_id')->constrained('categories')->cascadeOnDelete();
+            $table->foreignId('kategori_id')->constrained('kategori')->cascadeOnDelete();
             $table->string('judul');
             $table->string('penulis')->nullable();
             $table->string('penerbit')->nullable();
             $table->year('tahun_terbit')->nullable();
-            $table->integer('stok');
-            $table->enum('kondisi', ['bagus', 'rusak', 'perbaikan']);
+            $table->integer('stok_tersedia')->default(0); 
+            $table->integer('dalam_perbaikan')->default(0);
             $table->string('cover')->nullable();
             $table->timestamps();
         });
@@ -23,6 +23,6 @@ return new class extends Migration {
 
     public function down(): void
     {
-        Schema::dropIfExists('books');
+        Schema::dropIfExists('buku');
     }
 };

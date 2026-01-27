@@ -33,7 +33,7 @@ class ProfileController extends Controller
                 'sometimes',
                 'nullable',
                 'digits:10',
-                Rule::unique('siswas', 'nomor_induk_siswa')
+                Rule::unique('siswa', 'nomor_induk_siswa')
                     ->ignore(optional($user->siswa)->id),
             ];
         }

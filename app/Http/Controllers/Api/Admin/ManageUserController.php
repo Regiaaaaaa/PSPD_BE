@@ -10,7 +10,7 @@ use App\Models\Staff;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
-class KelolaUserController extends Controller
+class ManageUserController extends Controller
 {
     // List user 
     public function index()
@@ -98,7 +98,7 @@ class KelolaUserController extends Controller
             'name'              => 'required|string',
             'email'             => 'required|email|unique:users,email',
             'password'          => 'required|min:6',
-            'nomor_induk_siswa' => 'required|digits:10|unique:siswas,nomor_induk_siswa',
+            'nomor_induk_siswa' => 'required|digits:10|unique:siswa,nomor_induk_siswa',
 
             'tingkat'           => 'required|in:X,XI,XII',
             'jurusan'           => 'required|in:RPL,ANIMASI,TJKT,TE,PSPT',
@@ -140,7 +140,7 @@ class KelolaUserController extends Controller
             'tingkat' => 'sometimes|in:X,XI,XII',
             'jurusan' => 'sometimes|in:RPL,ANIMASI,TJKT,TE,PSPT',
             'kelas'   => 'sometimes|integer|min:1|max:5',
-            'nomor_induk_siswa' => 'sometimes|digits:10|unique:siswas,nomor_induk_siswa,' . optional($user->siswa)->id,
+            'nomor_induk_siswa' => 'sometimes|digits:10|unique:siswa,nomor_induk_siswa,' . optional($user->siswa)->id,
 
 
             'jabatan' => 'sometimes|string',

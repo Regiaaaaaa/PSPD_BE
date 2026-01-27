@@ -7,9 +7,9 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::create('dendas', function (Blueprint $table) {
+        Schema::create('denda', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('peminjaman_id')->constrained('peminjamans')->cascadeOnDelete();
+            $table->foreignId('peminjaman_id')->constrained('peminjaman')->cascadeOnDelete();
             $table->integer('nominal');
             $table->enum('status_pembayaran', ['belum_lunas', 'lunas']);
             $table->date('tgl_pembayaran')->nullable();
@@ -20,6 +20,6 @@ return new class extends Migration {
 
     public function down(): void
     {
-        Schema::dropIfExists('dendas');
+        Schema::dropIfExists('denda');
     }
 };
