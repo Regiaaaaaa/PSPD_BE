@@ -14,7 +14,7 @@ class Peminjaman extends Model
         'user_id',
         'buku_id',
 
-
+        'jumlah',
         'kepentingan',
         'pesan_ditolak',
 
