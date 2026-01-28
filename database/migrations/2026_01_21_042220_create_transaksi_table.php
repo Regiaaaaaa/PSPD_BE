@@ -20,7 +20,7 @@ return new class extends Migration {
             $table->date('tgl_deadline');
             $table->date('tgl_kembali')->nullable();
 
-            $table->enum('status', ['menunggu', 'dipinjam', 'kembali', 'ditolak'])
+            $table->enum('status', ['menunggu', 'dipinjam', 'kembali', 'ditolak', 'dibatalkan'])
                 ->default('menunggu');
 
             $table->foreignId('disetujui_oleh')
