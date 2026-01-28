@@ -9,7 +9,7 @@ return new class extends Migration {
     {
         Schema::create('denda', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('peminjaman_id')->constrained('peminjaman')->cascadeOnDelete();
+            $table->foreignId('transaksi_id')->constrained('transaksi')->cascadeOnDelete();
             $table->integer('nominal');
             $table->enum('status_pembayaran', ['belum_lunas', 'lunas']);
             $table->date('tgl_pembayaran')->nullable();

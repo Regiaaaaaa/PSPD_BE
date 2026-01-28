@@ -11,16 +11,16 @@ class Denda extends Model
 
     protected $table = 'denda';
     protected $fillable = [
-        'peminjaman_id',
+        'transaksi_id',
         'nominal',
         'status_pembayaran',
         'tgl_pembayaran',
         'operator_id'
     ];
 
-    public function peminjaman()
+    public function transaksi()
     {
-        return $this->belongsTo(Peminjaman::class);
+        return $this->belongsTo(Transaksi::class);
     }
 
     public function operator()

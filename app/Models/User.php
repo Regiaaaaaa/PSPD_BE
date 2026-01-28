@@ -48,9 +48,9 @@ class User extends Authenticatable
     }
 
     // User punya banyak peminjaman
-    public function peminjaman()
+    public function transaksi()
     {
-        return $this->hasMany(Peminjaman::class);
+        return $this->hasMany(Transaksi::class);
     }
 
     // Operator punya input banyak denda
