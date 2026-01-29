@@ -110,7 +110,17 @@ Route::middleware(['auth:sanctum', 'role:operator'])->prefix('operator')->group(
         Route::get('/laporan/transaksi', [LaporanController::class, 'transaksi']);
         Route::get('/laporan/denda', [LaporanController::class, 'denda']);
         Route::get('/laporan/summary', [LaporanController::class, 'summary']);
+
+        Route::get('/laporan/transaksi/export/excel',[LaporanController::class,'exportTransaksiExcel']);
+        Route::get('/laporan/transaksi/export/pdf',[LaporanController::class,'exportTransaksiPdf']);
+
+        Route::get('/laporan/denda/export/excel',[LaporanController::class,'exportDendaExcel']);
+        Route::get('/laporan/denda/export/pdf',[LaporanController::class,'exportDendaPdf']);
+
+        Route::get('/laporan/summary/export/excel',[LaporanController::class,'exportSummaryExcel']);
+        Route::get('/laporan/summary/export/pdf',[LaporanController::class,'exportSummaryPdf']);
     });
+    
 
 
 
