@@ -29,6 +29,7 @@ class Transaksi extends Model
 
         'disetujui_oleh',
         'diterima_oleh',
+        'ditolak_oleh',
     ];
 
         protected $casts = [
@@ -58,6 +59,12 @@ class Transaksi extends Model
     public function diterimaOleh()
     {
     return $this->belongsTo(User::class, 'diterima_oleh');
+    }
+
+    // Operator yang menolak
+    public function ditolakOleh()
+    {
+    return $this->belongsTo(User::class, 'ditolak_oleh');
     }
 
     public function denda()

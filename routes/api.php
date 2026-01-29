@@ -5,12 +5,22 @@ use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\Api\Auth\AuthController;
 use App\Http\Controllers\Api\OtpController;
+use App\Http\Controllers\Api\ProfilePetugasController;
 
 use App\Http\Controllers\Api\Admin\ManageUserController;
 use App\Http\Controllers\Api\Admin\CategoryController;
 use App\Http\Controllers\Api\Admin\BookController;
 
+
+use App\Http\Controllers\Api\Operator\VerifikasiController;
+use App\Http\Controllers\Api\Operator\PengembalianController;
+use App\Http\Controllers\Api\Operator\DendaController;
+use App\Http\Controllers\Api\Operator\LaporanController;
+
+
 use App\Http\Controllers\Api\Users\ProfileController;
+use App\Http\Controllers\Api\Users\TransaksiController;
+use App\Http\Controllers\Api\Users\katalogController;
 
 /*
 |--------------------------------------------------------------------------
@@ -47,6 +57,10 @@ Route::middleware('auth:sanctum')->get('/me', function (Request $request) {
 // Route Admin
 Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(function () {
 
+        // Profile Admin
+        Route::put('/profile', [ProfilePetugasController::class, 'update']);
+        Route::post('/profile/change-password', [ProfilePetugasController::class, 'changePassword']);
+
         // Kelola Akun User
         Route::get('/users', [ManageUserController::class, 'index']);
         Route::get('/users/{id}', [ManageUserController::class, 'show']);
@@ -73,15 +87,53 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
     });
 
 
+Route::middleware(['auth:sanctum', 'role:operator'])->prefix('operator')->group(function () {
+
+        // Profile Operator
+        Route::put('/profile', [ProfilePetugasController::class, 'update']);
+        Route::post('/profile/change-password', [ProfilePetugasController::class, 'changePassword']);
+
+        // Verifikasi
+        Route::get('/verifikasi', [VerifikasiController::class, 'index']);
+        Route::patch('/verifikasi/{id}/approve', [VerifikasiController::class, 'approve']);
+        Route::patch('/verifikasi/{id}/reject', [VerifikasiController::class, 'reject']);
+
+        // Pengembalian 
+        Route::get('/pengembalian', [PengembalianController::class, 'index']);
+        Route::patch('/pengembalian/{id}/terima', [PengembalianController::class, 'terima']);
+
+        // Denda
+        Route::get('/denda', [DendaController::class, 'index']);
+        Route::patch('/denda/{id}/bayar', [DendaController::class, 'bayar']);
+
+        // Laporan 
+        Route::get('/laporan/transaksi', [LaporanController::class, 'transaksi']);
+        Route::get('/laporan/denda', [LaporanController::class, 'denda']);
+        Route::get('/laporan/summary', [LaporanController::class, 'summary']);
+    });
+
+
+
 // Route Users ( Staff & Siswa )
 Route::middleware(['auth:sanctum', 'role:staff,siswa'])->prefix('user')->group(function () {
 
-        // Update Profile 
+        // Profile Users
         Route::put('/profile', [ProfileController::class, 'updateProfile']);
-        Route::put('/profile/change-password', [ProfileController::class, 'changePassword']);
+        Route::post('/profile/change-password', [ProfileController::class, 'changePassword']);
+
+
+        // Transaksi 
+        Route::get('/transaksi', [TransaksiController::class, 'index']);
+        Route::post('/transaksi/{buku}', [TransaksiController::class, 'store']);
+        Route::get('/transaksi/{id}', [TransaksiController::class, 'show']);
+        Route::patch('/transaksi/{id}/cancel', [TransaksiController::class, 'cancel']);
+
+        // Katalog Buku
+        Route::get('/katalog', [KatalogController::class, 'index']);
+        Route::get('/katalog/{id}', [KatalogController::class, 'show']);
+        
     });
 
 
 
-Route::middleware(['auth:sanctum', 'role:operator'])->prefix('operator')->group(function () {
-    });
+

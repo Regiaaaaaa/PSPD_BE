@@ -103,7 +103,7 @@ class BookController extends Controller
             'penulis'         => 'nullable|string|max:255',
             'penerbit'        => 'nullable|string|max:255',
             'tahun_terbit'    => 'nullable|digits:4',
-            'stok_tersedia'   => 'sometimes|integer|min:0', // Jadi sometimes agar fleksibel
+            'stok_tersedia'   => 'sometimes|integer|min:0', 
             'dalam_perbaikan' => 'sometimes|integer|min:0',
             'cover'           => 'nullable|image|mimes:jpg,jpeg,png|max:2048'
         ]);

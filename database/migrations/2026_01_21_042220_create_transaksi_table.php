@@ -33,6 +33,11 @@ return new class extends Migration {
                 ->constrained('users')
                 ->nullOnDelete();
 
+            $table->foreignId('ditolak_oleh')
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
+
             $table->timestamps();
         });
     }
