@@ -8,26 +8,28 @@ use Illuminate\Http\Request;
 
 class KatalogController extends Controller
 {
-    // Daftar Katalog Buku Yang Siap Di Pinjam
+    // Katalog Buku
     public function index(Request $request)
     {
         $buku = Buku::with('kategori')
             ->where('stok_tersedia', '>', 0)
-
-            
             ->when($request->search, function ($q) use ($request) {
                 $q->where(function ($sub) use ($request) {
                     $sub->where('judul', 'like', "%{$request->search}%")
                         ->orWhere('penulis', 'like', "%{$request->search}%")
-                        ->orWhere('penerbit', 'like', "%{$request->search}%");
+                        ->orWhere('penerbit', 'like', "%{$request->search}%")
+                        ->orWhere('isbn', 'like', "%{$request->search}%"); 
                 });
             })
+
             ->when($request->tahun, fn ($q) =>
                 $q->where('tahun_terbit', $request->tahun)
             )
+
             ->when($request->kategori_id, fn ($q) =>
                 $q->where('kategori_id', $request->kategori_id)
             )
+
             ->when(
                 $request->sort === 'terbaru',
                 fn ($q) => $q->orderByDesc('tahun_terbit'),
@@ -38,6 +40,7 @@ class KatalogController extends Controller
             ->map(function ($b) {
                 return [
                     'id'             => $b->id,
+                    'isbn'           => $b->isbn, 
                     'judul'          => $b->judul,
                     'penulis'        => $b->penulis,
                     'penerbit'       => $b->penerbit,
@@ -54,7 +57,7 @@ class KatalogController extends Controller
         ]);
     }
 
-    // Detail  Buku
+    // Detail Buku
     public function show($id)
     {
         $buku = Buku::with('kategori')->findOrFail($id);
@@ -63,6 +66,7 @@ class KatalogController extends Controller
             'success' => true,
             'data' => [
                 'id'            => $buku->id,
+                'isbn'          => $buku->isbn, 
                 'judul'         => $buku->judul,
                 'penulis'       => $buku->penulis,
                 'penerbit'      => $buku->penerbit,

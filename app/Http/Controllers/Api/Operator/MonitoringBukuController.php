@@ -16,6 +16,7 @@ class MonitoringBukuController extends Controller
             ->map(function ($item) {
                 return [
                     'id' => $item->id,
+                    'isbn' => $item->isbn, 
                     'judul' => $item->judul,
                     'penulis' => $item->penulis,
                     'penerbit' => $item->penerbit,
@@ -27,9 +28,9 @@ class MonitoringBukuController extends Controller
                     'stok_total' => $item->stok_total,
                     'stok_tersedia' => $item->stok_tersedia,
                     'dalam_perbaikan' => $item->dalam_perbaikan,
-                    'stok_tidak_tersedia' => 
-                        $item->stok_total 
-                        - $item->stok_tersedia 
+                    'stok_tidak_tersedia' =>
+                        $item->stok_total
+                        - $item->stok_tersedia
                         - $item->dalam_perbaikan,
                     'cover' => $item->cover,
                     'created_at' => $item->created_at,
