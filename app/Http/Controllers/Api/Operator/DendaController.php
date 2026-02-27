@@ -9,9 +9,7 @@ use Illuminate\Http\Request;
 
 class DendaController extends Controller
 {
-    /**
-     * List semua denda
-     */
+    // Daftar Denda
     public function index(Request $request)
     {
             $query = Denda::with([
@@ -31,10 +29,7 @@ class DendaController extends Controller
             'data' => $denda
         ]);
     }
-
-    /**
-     * Tandai denda sudah dibayar
-     */
+    
     public function bayar($id)
     {
         $denda = Denda::findOrFail($id);

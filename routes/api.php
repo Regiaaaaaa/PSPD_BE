@@ -16,8 +16,7 @@ use App\Http\Controllers\Api\Operator\VerifikasiController;
 use App\Http\Controllers\Api\Operator\PengembalianController;
 use App\Http\Controllers\Api\Operator\DendaController;
 use App\Http\Controllers\Api\Operator\LaporanController;
-
-
+use App\Http\Controllers\Api\Operator\MonitoringBukuController;
 use App\Http\Controllers\Api\Users\ProfileController;
 use App\Http\Controllers\Api\Users\TransaksiController;
 use App\Http\Controllers\Api\Users\katalogController;
@@ -105,6 +104,9 @@ Route::middleware(['auth:sanctum', 'role:operator'])->prefix('operator')->group(
         // Denda
         Route::get('/denda', [DendaController::class, 'index']);
         Route::patch('/denda/{id}/bayar', [DendaController::class, 'bayar']);
+
+        // Monitoring Buku
+         Route::get('/monitoring-buku', [MonitoringBukuController::class, 'index']);
 
         // Laporan 
         Route::get('/laporan/transaksi', [LaporanController::class, 'transaksi']);
