@@ -10,9 +10,7 @@ use Illuminate\Support\Facades\Auth;
 
 class TransaksiController extends Controller
 {
-    /**
-     * List transaksi user login
-     */
+    // Daftar Transaksi User ( Login )
     public function index()
     {
         $transaksi = Transaksi::with(['buku', 'denda'])
@@ -26,6 +24,7 @@ class TransaksiController extends Controller
                     'jumlah' => $t->jumlah,
                     'status' => $t->status,
                     'tgl_deadline' => $t->tgl_deadline,
+                    'pesan_ditolak' => $t->pesan_ditolak,
                     'denda' => $t->denda,
                 ];
             });
@@ -36,9 +35,8 @@ class TransaksiController extends Controller
         ]);
     }
 
-    /**
-     * Ajukan peminjaman
-     */
+    
+    // Ajukan peminjaman
     public function store(Request $request, $bukuId)
     {
         $request->validate([
@@ -49,7 +47,7 @@ class TransaksiController extends Controller
 
         $buku = Buku::findOrFail($bukuId);
 
-        // Cek stok awal (belum dikurangin)
+        // Cek stok awal 
         if ($request->jumlah > $buku->stok_tersedia) {
             return response()->json([
                 'success' => false,
@@ -73,9 +71,7 @@ class TransaksiController extends Controller
         ], 201);
     }
 
-    /**
-     * Detail transaksi
-     */
+    // Detail Transaksi
     public function show($id)
     {
         $transaksi = Transaksi::with(['buku', 'denda'])
@@ -89,9 +85,7 @@ class TransaksiController extends Controller
         ]);
     }
 
-    /**
-     * Batalkan pengajuan (ubah status ke dibatalkan)
-     */
+   // Batalkan Pengajuan
     public function cancel($id)
     {
         $transaksi = Transaksi::where('user_id', Auth::id())
