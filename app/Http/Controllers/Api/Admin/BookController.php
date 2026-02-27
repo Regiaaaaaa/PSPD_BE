@@ -4,14 +4,13 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Buku;
-use App\Models\Kategori; 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 
 class BookController extends Controller
 {
-    // Daftar buku
+    // Daftar Buku
     public function index()
     {
         $buku = Buku::with('kategori')->get();
@@ -20,26 +19,25 @@ class BookController extends Controller
             'status' => true,
             'message' => 'List semua buku',
             'data' => $buku
-        ], 200);
+        ]);
     }
 
-    // Buat buku
+    // Tambah Buku
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'kategori_id'   => 'required|exists:kategori,id', 
-            'judul'         => 'required|string|max:255',
-            'penulis'       => 'nullable|string|max:255',
-            'penerbit'      => 'nullable|string|max:255',
-            'tahun_terbit'  => 'nullable|digits:4',
-            'stok_tersedia' => 'required|integer|min:0', 
-            'cover'         => 'nullable|image|mimes:jpg,jpeg,png|max:2048'
+            'kategori_id'  => 'required|exists:kategori,id',
+            'judul'        => 'required|string|max:255',
+            'penulis'      => 'nullable|string|max:255',
+            'penerbit'     => 'nullable|string|max:255',
+            'tahun_terbit' => 'nullable|digits:4',
+            'stok_total'   => 'required|integer|min:0',
+            'cover'        => 'nullable|image|mimes:jpg,jpeg,png|max:2048'
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'status' => false,
-                'message' => 'Validasi gagal',
                 'errors' => $validator->errors()
             ], 422);
         }
@@ -50,13 +48,15 @@ class BookController extends Controller
         }
 
         $buku = Buku::create([
-            'kategori_id'    => $request->kategori_id,
-            'judul'          => $request->judul,
-            'penulis'        => $request->penulis,
-            'penerbit'       => $request->penerbit,
-            'tahun_terbit'   => $request->tahun_terbit,
-            'stok_tersedia'  => $request->stok_tersedia,
-            'cover'          => $coverPath
+            'kategori_id'     => $request->kategori_id,
+            'judul'           => $request->judul,
+            'penulis'         => $request->penulis,
+            'penerbit'        => $request->penerbit,
+            'tahun_terbit'    => $request->tahun_terbit,
+            'stok_total'      => $request->stok_total,
+            'stok_tersedia'   => $request->stok_total,
+            'dalam_perbaikan' => 0,
+            'cover'           => $coverPath
         ]);
 
         return response()->json([
@@ -66,7 +66,7 @@ class BookController extends Controller
         ], 201);
     }
 
-    // Daftar detail buku
+   // Detail Buku
     public function show($id)
     {
         $buku = Buku::with('kategori')->find($id);
@@ -80,12 +80,11 @@ class BookController extends Controller
 
         return response()->json([
             'status' => true,
-            'message' => 'Detail buku',
             'data' => $buku
-        ], 200);
+        ]);
     }
 
-    // Ubah data buku
+    // Perbarui Buku
     public function update(Request $request, $id)
     {
         $buku = Buku::find($id);
@@ -103,7 +102,7 @@ class BookController extends Controller
             'penulis'         => 'nullable|string|max:255',
             'penerbit'        => 'nullable|string|max:255',
             'tahun_terbit'    => 'nullable|digits:4',
-            'stok_tersedia'   => 'sometimes|integer|min:0', 
+            'stok_total'      => 'sometimes|integer|min:' . $buku->stok_total,
             'dalam_perbaikan' => 'sometimes|integer|min:0',
             'cover'           => 'nullable|image|mimes:jpg,jpeg,png|max:2048'
         ]);
@@ -111,36 +110,25 @@ class BookController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'status' => false,
-                'message' => 'Validasi gagal',
                 'errors' => $validator->errors()
             ], 422);
         }
 
-        // --- LOGIC PERHITUNGAN STOK (DELTA/SELISIH) ---
-        $perbaikanLama = $buku->dalam_perbaikan;
-        $perbaikanBaru = $request->has('dalam_perbaikan') ? $request->dalam_perbaikan : $perbaikanLama;
-        
-        // Hitung selisih perubahan buku rusak
-        $selisih = $perbaikanLama - $perbaikanBaru;
+        // Logika Stok
+        $stokTotal = $request->stok_total ?? $buku->stok_total;
+        $perbaikan = $request->dalam_perbaikan ?? $buku->dalam_perbaikan;
+        $dipinjam = $buku->transaksi()
+            ->whereIn('status', ['disetujui', 'dipinjam'])
+            ->sum('jumlah');
 
-        // Tentukan stok tersedia akhir
-        if ($request->has('stok_tersedia')) {
-            // Jika admin input stok_tersedia (misal beli buku baru), pakai inputan itu
-            $stokAkhir = $request->stok_tersedia - $perbaikanBaru;
-        } else {
-            // Jika tidak input stok (cuma update perbaikan), pakai logic selisih otomatis
-            $stokAkhir = $buku->stok_tersedia + $selisih;
-        }
+        $stokTersedia = $stokTotal - $perbaikan - $dipinjam;
 
-        // Proteksi agar tidak minus
-        if ($stokAkhir < 0) {
+        if ($stokTersedia < 0) {
             return response()->json([
                 'status' => false,
-                'message' => 'Stok tersedia tidak mencukupi untuk jumlah perbaikan ini!',
+                'message' => 'Stok tidak mencukupi (perbaikan / peminjaman terlalu banyak)'
             ], 422);
         }
-
-        // --- HANDLE COVER ---
         if ($request->hasFile('cover')) {
             if ($buku->cover && Storage::disk('public')->exists($buku->cover)) {
                 Storage::disk('public')->delete($buku->cover);
@@ -148,25 +136,26 @@ class BookController extends Controller
             $buku->cover = $request->file('cover')->store('covers', 'public');
         }
 
-        // --- PROSES UPDATE ---
+        // Perbarui Data
         $buku->update([
             'kategori_id'     => $request->kategori_id,
             'judul'           => $request->judul,
             'penulis'         => $request->penulis,
             'penerbit'        => $request->penerbit,
             'tahun_terbit'    => $request->tahun_terbit,
-            'stok_tersedia'   => $stokAkhir,
-            'dalam_perbaikan' => $perbaikanBaru,      
+            'stok_total'      => $stokTotal,
+            'stok_tersedia'   => $stokTersedia,
+            'dalam_perbaikan' => $perbaikan,
         ]);
 
         return response()->json([
             'status' => true,
-            'message' => 'Buku berhasil diupdate',
+            'message' => 'Buku berhasil diperbarui',
             'data' => $buku
-        ], 200);
+        ]);
     }
 
-    // Hapus buku
+    // Hapus Buku
     public function destroy($id)
     {
         $buku = Buku::find($id);
@@ -187,6 +176,6 @@ class BookController extends Controller
         return response()->json([
             'status' => true,
             'message' => 'Buku berhasil dihapus'
-        ], 200);
+        ]);
     }
 }
