@@ -52,7 +52,7 @@ class ProfileController extends Controller
 
         $data = $request->validate($rules);
 
-        // update tabel users (hanya kalau name dikirim)
+        // update tabel users 
         if (isset($data['name'])) {
             $user->update([
                 'name' => $data['name'],

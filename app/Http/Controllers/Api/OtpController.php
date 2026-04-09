@@ -29,20 +29,15 @@ class OtpController extends Controller
             ], 404);
         }
 
-        // generate 6 digit OTP
+    
         $otp = rand(100000, 999999);
-
-        // hapus OTP lama kalau ada
         Otp::where('email', $request->email)->delete();
-
-        // simpan OTP baru
         Otp::create([
             'email' => $request->email,
             'otp' => $otp,
             'expired_at' => Carbon::now()->addMinutes(5),
         ]);
 
-        // kirim email
         Mail::to($request->email)->send(new OtpMail($otp, $user->name));
 
         return response()->json([
@@ -78,7 +73,6 @@ class OtpController extends Controller
             ], 400);
         }
 
-        // tandai OTP sudah dipakai
         $otpData->update([
             'verified_at' => Carbon::now()
         ]);
@@ -96,8 +90,6 @@ class OtpController extends Controller
             'email' => 'required|email',
             'password' => 'required|min:6|confirmed'
         ]);
-
-        // cek apakah ada OTP yang sudah diverifikasi
         $otpData = Otp::where('email', $request->email)
             ->whereNotNull('verified_at')
             ->latest()
@@ -119,7 +111,6 @@ class OtpController extends Controller
             ], 404);
         }
 
-        // update password
         $user->update([
             'password' => Hash::make($request->password)
         ]);

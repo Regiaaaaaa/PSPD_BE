@@ -10,9 +10,7 @@ use Illuminate\Support\Facades\Auth;
 
 class VerifikasiController extends Controller
 {
-    /**
-     * List transaksi menunggu untuk operator
-     */
+    // Daftar menunggu
     public function index()
     {
         $transaksi = Transaksi::with([
@@ -30,9 +28,7 @@ class VerifikasiController extends Controller
         ]);
     }
 
-    /**
-     * Approve peminjaman
-     */
+    // Approve peminjaman
     public function approve($id)
     {
         $transaksi = Transaksi::with('buku')->findOrFail($id);
@@ -46,7 +42,6 @@ class VerifikasiController extends Controller
 
         $buku = $transaksi->buku;
 
-        // cek stok
         if ($transaksi->jumlah > $buku->stok_tersedia) {
             return response()->json([
                 'success' => false,
@@ -54,11 +49,9 @@ class VerifikasiController extends Controller
             ], 422);
         }
 
-        // update stok
         $buku->stok_tersedia -= $transaksi->jumlah;
         $buku->save();
 
-        // update transaksi
         $transaksi->update([
             'status' => 'dipinjam',
             'tgl_pinjam' => now(),
@@ -72,9 +65,7 @@ class VerifikasiController extends Controller
         ]);
     }
 
-    /**
-     * Tolak peminjaman
-     */
+    // Reject peminjaman
     public function reject(Request $request, $id)
     {
         $request->validate([
