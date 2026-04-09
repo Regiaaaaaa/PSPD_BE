@@ -69,12 +69,12 @@ class DashboardController extends Controller
         $bulan = request('bulan', now()->month);
         $tahun = request('tahun', now()->year);
 
-        // Transaksi user difilter by bulan & tahun
+        
         $transaksiFilter = Transaksi::where('user_id', $user->id)
             ->whereMonth('created_at', $bulan)
             ->whereYear('created_at', $tahun);
 
-        // Denda user difilter by bulan & tahun (via relasi transaksi)
+        
         $dendaFilter = Denda::whereHas('transaksi', function ($q) use ($user, $bulan, $tahun) {
             $q->where('user_id', $user->id)
               ->whereMonth('created_at', $bulan)
@@ -105,11 +105,9 @@ class DashboardController extends Controller
         $bulan = request('bulan', now()->month);
         $tahun = request('tahun', now()->year);
 
-        // Transaksi difilter by bulan & tahun
         $transaksiFilter = Transaksi::whereMonth('created_at', $bulan)
             ->whereYear('created_at', $tahun);
 
-        // Denda difilter by bulan & tahun (via relasi transaksi)
         $dendaFilter = Denda::whereHas('transaksi', function ($q) use ($bulan, $tahun) {
             $q->whereMonth('created_at', $bulan)
               ->whereYear('created_at', $tahun);
