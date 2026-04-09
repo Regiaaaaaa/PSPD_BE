@@ -24,16 +24,19 @@
     <p>Total Transaksi: {{ $summary['transaksi']['total'] }}</p>
     <p>Dipinjam: {{ $summary['transaksi']['dipinjam'] }}</p>
     <p>Kembali: {{ $summary['transaksi']['kembali'] }}</p>
-    <p>Total Denda: Rp {{ number_format($summary['denda']['total_nominal'],0,',','.') }}</p>
+    <p>Ditolak: {{ $summary['transaksi']['ditolak'] }}</p>
+    <p>Dibatalkan: {{ $summary['transaksi']['dibatalkan'] }}</p>
 </div>
 
 <table>
     <thead>
         <tr>
             <th>No</th>
-            <th>Tanggal</th>
             <th>Peminjam</th>
-            <th>Buku</th>
+            <th>Judul Buku</th>
+            <th>Tgl Pinjam</th>
+            <th>Deadline</th>
+            <th>Tgl Kembali</th>
             <th>Status</th>
         </tr>
     </thead>
@@ -41,10 +44,12 @@
         @foreach ($data as $i => $t)
         <tr>
             <td>{{ $i + 1 }}</td>
-            <td>{{ $t->created_at->format('Y-m-d') }}</td>
             <td>{{ $t->user->name }}</td>
             <td>{{ $t->buku->judul }}</td>
-            <td>{{ $t->status }}</td>
+            <td>{{ $t->tgl_pinjam ? \Carbon\Carbon::parse($t->tgl_pinjam)->format('d M Y') : '-' }}</td>
+            <td>{{ $t->tgl_deadline ? \Carbon\Carbon::parse($t->tgl_deadline)->format('d M Y') : '-' }}</td>
+            <td>{{ $t->tgl_kembali ? \Carbon\Carbon::parse($t->tgl_kembali)->format('d M Y') : '-' }}</td>
+            <td>{{ ucfirst($t->status) }}</td>
         </tr>
         @endforeach
     </tbody>

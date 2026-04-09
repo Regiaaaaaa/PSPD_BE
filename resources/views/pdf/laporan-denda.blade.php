@@ -13,26 +13,25 @@
 </head>
 <body>
     <h2>Laporan Denda</h2>
-    <h4>Periode: {{ $periode['dari'] }} s/d {{ $periode['sampai'] }}</h4>
-
+    <h4>Periode: {{ $periode['bulan'] }} {{ $periode['tahun'] }} ({{ $periode['dari'] }} s/d {{ $periode['sampai'] }})</h4>
     <table>
         <thead>
             <tr>
-                <th>Tanggal Denda</th>
-                <th>User</th>
+                <th>Peminjam</th>
                 <th>Buku</th>
                 <th>Nominal</th>
                 <th>Status Pembayaran</th>
+                <th>Dibayar pada</th>
             </tr>
         </thead>
         <tbody>
             @foreach ($data as $d)
                 <tr>
-                    <td>{{ $d->created_at->format('Y-m-d') }}</td>
                     <td>{{ $d->transaksi->user->name }}</td>
                     <td>{{ $d->transaksi->buku->judul }}</td>
                     <td>{{ number_format($d->nominal, 0, ',', '.') }}</td>
                     <td>{{ ucfirst($d->status_pembayaran) }}</td>
+                    <td>{{ $d->tgl_pembayaran ? \Carbon\Carbon::parse($d->tgl_pembayaran)->format('d M Y') : '-' }}</td>
                 </tr>
             @endforeach
         </tbody>
