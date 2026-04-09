@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\Auth\AuthController;
 use App\Http\Controllers\Api\OtpController;
 use App\Http\Controllers\Api\ProfilePetugasController;
+use App\Http\Controllers\Api\DashboardController;
 
 use App\Http\Controllers\Api\Admin\ManageUserController;
 use App\Http\Controllers\Api\Admin\CategoryController;
@@ -51,6 +52,9 @@ Route::post('/reset-password', [OtpController::class, 'resetPassword']);
 Route::middleware('auth:sanctum')->get('/me', function (Request $request) {
     return $request->user();
 });
+
+// Dashboard 
+Route::middleware('auth:sanctum')->get('/dashboard', [DashboardController::class, 'index']);
 
 
 // Route Admin
@@ -137,6 +141,7 @@ Route::middleware(['auth:sanctum', 'role:staff,siswa'])->prefix('user')->group(f
         // Transaksi 
         Route::get('/transaksi', [TransaksiController::class, 'index']);
         Route::post('/transaksi/{buku}', [TransaksiController::class, 'store']);
+        Route::get('transaksi/cek-denda', [TransaksiController::class, 'cekDenda']); 
         Route::get('/transaksi/{id}', [TransaksiController::class, 'show']);
         Route::patch('/transaksi/{id}/cancel', [TransaksiController::class, 'cancel']);
 
