@@ -5,12 +5,14 @@ namespace App\Http\Controllers\Api\Operator;
 use App\Http\Controllers\Controller;
 use App\Models\Transaksi;
 use App\Models\Denda;
+use App\Models\Buku;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class PengembalianController extends Controller
 {
-    // List transaksi yang sedang di pinjam
+    // List transaksi yang sedang dipinjam
     public function index()
     {
         $transaksi = Transaksi::with(['buku', 'user.siswa', 'user.staff'])
@@ -32,43 +34,49 @@ class PengembalianController extends Controller
         if ($transaksi->status !== 'dipinjam') {
             return response()->json([
                 'success' => false,
-                'message' => 'Transaksi tidak bisa diterima'
+                'message' => 'Transaksi tidak bisa diterima karena statusnya bukan dipinjam'
             ], 422);
         }
 
-        // Update stok buku
-        $buku = $transaksi->buku;
-        $buku->stok_tersedia += $transaksi->jumlah;
-        $buku->save();
-
-        // Update transaksi
-        $transaksi->update([
-            'tgl_kembali' => now(),
-            'diterima_oleh' => Auth::id(),
-            'status' => 'kembali',
-        ]);
-
-        // Hitung keterlambatan
-        $tglDeadline = Carbon::parse($transaksi->tgl_deadline);
-        $tglKembali = Carbon::parse($transaksi->tgl_kembali);
-        $selisihHari = $tglKembali->diffInDays($tglDeadline);
-
-        $message = 'Pengembalian berhasil diterima';
-
-        if ($tglKembali->greaterThan($tglDeadline)) {
-            $nominal = $selisihHari * 1000;
-            Denda::create([
-                'transaksi_id' => $transaksi->id,
-                'nominal' => $nominal,
-                'status_pembayaran' => 'belum_lunas',
+        DB::beginTransaction();
+        try {
+            Buku::where('id', $transaksi->buku_id)->increment('stok_tersedia', 1);
+            $tglSekarang = now();
+            $transaksi->update([
+                'tgl_kembali' => $tglSekarang,
+                'diterima_oleh' => Auth::id(),
+                'status' => 'kembali',
             ]);
-            $message .= ', terlambat ' . $selisihHari . ' hari, denda Rp ' . number_format($nominal);
-        }
+            $tglDeadline = Carbon::parse($transaksi->tgl_deadline)->startOfDay();
+            $tglKembali = Carbon::parse($tglSekarang)->startOfDay();
+            
+            $message = 'Pengembalian berhasil diterima';
+            if ($tglKembali->greaterThan($tglDeadline)) {
+                $selisihHari = $tglKembali->diffInDays($tglDeadline);
+                $nominal = $selisihHari * 1000; 
 
-        return response()->json([
-            'success' => true,
-            'message' => $message,
-            'data' => $transaksi
-        ]);
+                Denda::create([
+                    'transaksi_id' => $transaksi->id,
+                    'nominal' => $nominal,
+                    'status_pembayaran' => 'belum_lunas',
+                ]);
+                
+                $message .= ', terlambat ' . $selisihHari . ' hari, denda Rp ' . number_format($nominal);
+            }
+
+            DB::commit();
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'data' => $transaksi
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memproses pengembalian: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }
