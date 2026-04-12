@@ -99,8 +99,8 @@ class BookController extends Controller
         }
 
         $dipinjam = $buku->transaksi()
-            ->whereIn('status', ['disetujui', 'dipinjam'])
-            ->sum('jumlah');
+            ->whereIn('status', ['menunggu', 'dipinjam'])
+            ->count();
 
         $perbaikan = $request->dalam_perbaikan ?? $buku->dalam_perbaikan;
         $minStok = $dipinjam + $perbaikan;
@@ -112,7 +112,7 @@ class BookController extends Controller
             'penulis'         => 'nullable|string|max:255',
             'penerbit'        => 'nullable|string|max:255',
             'tahun_terbit'    => 'nullable|digits:4',
-            'stok_total'      => 'sometimes|integer|min:' . $minStok, // ← fix di sini
+            'stok_total'      => 'sometimes|integer|min:' . $minStok, 
             'dalam_perbaikan' => 'sometimes|integer|min:0',
             'cover'           => 'nullable|image|mimes:jpg,jpeg,png|max:2048'
         ]);
