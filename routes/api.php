@@ -96,6 +96,11 @@ Route::middleware(['auth:sanctum', 'role:operator'])->prefix('operator')->group(
         Route::put('/profile', [ProfilePetugasController::class, 'update']);
         Route::post('/profile/change-password', [ProfilePetugasController::class, 'changePassword']);
 
+        // Notification
+        Route::get('/notifications', [VerifikasiController::class, 'getNotifications']);
+        Route::post('/notifications/{id}/read', [VerifikasiController::class, 'markAsRead']);
+        Route::post('/notifications/mark-all-read', [VerifikasiController::class, 'markAllRead']);
+
         // Verifikasi
         Route::get('/verifikasi', [VerifikasiController::class, 'index']);
         Route::patch('/verifikasi/{id}/approve', [VerifikasiController::class, 'approve']);
@@ -133,23 +138,32 @@ Route::middleware(['auth:sanctum', 'role:operator'])->prefix('operator')->group(
 // Route Users ( Staff & Siswa )
 Route::middleware(['auth:sanctum', 'role:staff,siswa'])->prefix('user')->group(function () {
 
-        // Profile Users
-        Route::put('/profile', [ProfileController::class, 'updateProfile']);
-        Route::post('/profile/change-password', [ProfileController::class, 'changePassword']);
+    // Profile Users
+    Route::put('/profile', [ProfileController::class, 'updateProfile']);
+    Route::post('/profile/change-password', [ProfileController::class, 'changePassword']);
 
+    // Transaksi (Sistem Baru: Keranjang & Multi-book)
+    Route::get('/transaksi', [TransaksiController::class, 'index']); // List riwayat
+    
+    // URL diubah jadi /pinjam dan tanpa parameter {buku} karena kirim array di body
+    Route::post('/transaksi/pinjam', [TransaksiController::class, 'store']); 
+    
+    Route::get('/transaksi/cek-denda', [TransaksiController::class, 'cekDenda']); 
+    Route::get('/transaksi/show/{id}', [TransaksiController::class, 'show']);
+    
+    // Method POST lebih disarankan untuk action cancel
+    Route::post('/transaksi/cancel/{id}', [TransaksiController::class, 'cancel']);
 
-        // Transaksi 
-        Route::get('/transaksi', [TransaksiController::class, 'index']);
-        Route::post('/transaksi/{buku}', [TransaksiController::class, 'store']);
-        Route::get('transaksi/cek-denda', [TransaksiController::class, 'cekDenda']); 
-        Route::get('/transaksi/{id}', [TransaksiController::class, 'show']);
-        Route::patch('/transaksi/{id}/cancel', [TransaksiController::class, 'cancel']);
+    // Katalog Buku
+    Route::get('/katalog', [KatalogController::class, 'index']);
+    Route::get('/katalog/{id}', [KatalogController::class, 'show']);
 
-        // Katalog Buku
-        Route::get('/katalog', [KatalogController::class, 'index']);
-        Route::get('/katalog/{id}', [KatalogController::class, 'show']);
-        
-    });
+    // Notification
+    Route::get('/notifications', [TransaksiController::class, 'getNotifications']);
+    Route::post('/notifications/{id}/read', [TransaksiController::class, 'markAsRead']);
+    Route::post('/notifications/mark-all-read', [TransaksiController::class, 'markAllRead']);
+    
+});
 
 
 

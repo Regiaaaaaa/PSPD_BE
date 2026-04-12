@@ -5,52 +5,32 @@ namespace App\Http\Controllers\Api\Operator;
 use App\Http\Controllers\Controller;
 use App\Models\Transaksi;
 use App\Models\Buku;
+use App\Notifications\TransaksiNotification; 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class VerifikasiController extends Controller
 {
-    // Daftar menunggu
+    // Daftar pengajuan Menunggu
     public function index()
     {
-        $transaksi = Transaksi::with([
-            'buku',
-            'user.siswa',
-            'user.staff' 
-        ])
-        ->where('status', 'menunggu')
-        ->latest()
-        ->get();
+        $transaksi = Transaksi::with(['buku', 'user.siswa', 'user.staff'])
+            ->where('status', 'menunggu')
+            ->latest()
+            ->get();
 
-        return response()->json([
-            'success' => true,
-            'data' => $transaksi
-        ]);
+        return response()->json(['success' => true, 'data' => $transaksi]);
     }
 
-    // Approve peminjaman
+    // Approve Peminjaman
     public function approve($id)
     {
-        $transaksi = Transaksi::with('buku')->findOrFail($id);
+        $transaksi = Transaksi::with(['buku', 'user'])->findOrFail($id);
 
         if ($transaksi->status !== 'menunggu') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Transaksi sudah diverifikasi'
-            ], 422);
+            return response()->json(['success' => false, 'message' => 'Transaksi sudah diverifikasi'], 422);
         }
-
-        $buku = $transaksi->buku;
-
-        if ($transaksi->jumlah > $buku->stok_tersedia) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Stok buku tidak mencukupi'
-            ], 422);
-        }
-
-        $buku->stok_tersedia -= $transaksi->jumlah;
-        $buku->save();
 
         $transaksi->update([
             'status' => 'dipinjam',
@@ -58,39 +38,67 @@ class VerifikasiController extends Controller
             'disetujui_oleh' => Auth::id(),
         ]);
 
+        $transaksi->user->notify(new TransaksiNotification($transaksi));
+
+        return response()->json(['success' => true, 'message' => 'Berhasil disetujui', 'data' => $transaksi]);
+    }
+
+    // Reject Peminjaman
+    public function reject(Request $request, $id)
+    {
+        $request->validate(['pesan_ditolak' => 'required|string|max:255']);
+        
+        $transaksi = Transaksi::with(['buku', 'user'])->findOrFail($id);
+
+        if ($transaksi->status !== 'menunggu') {
+            return response()->json(['success' => false, 'message' => 'Sudah diverifikasi'], 422);
+        }
+
+        DB::beginTransaction();
+        try {
+            $transaksi->update([
+                'status' => 'ditolak',
+                'pesan_ditolak' => $request->pesan_ditolak,
+                'ditolak_oleh' => Auth::id(), 
+            ]);
+
+            Buku::where('id', $transaksi->buku_id)->increment('stok_tersedia');
+            $transaksi->user->notify(new TransaksiNotification($transaksi));
+
+            DB::commit();
+            return response()->json(['success' => true, 'message' => 'Berhasil ditolak & stok kembali.']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'Gagal reject.'], 400);
+        }
+    }
+
+    // List Notifikasi
+    public function getNotifications()
+    {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        
         return response()->json([
             'success' => true,
-            'message' => 'Transaksi berhasil disetujui',
-            'data' => $transaksi
+            'unread_count' => $user->unreadNotifications()->count(),
+            'data' => $user->notifications()->limit(10)->get()
         ]);
     }
 
-    // Reject peminjaman
-    public function reject(Request $request, $id)
+    // Tandai Di Baca
+    public function markAsRead($id)
     {
-        $request->validate([
-            'pesan_ditolak' => 'required|string|max:255',
-        ]);
+        $notification = Auth::user()->notifications()->findOrFail($id);
+        $notification->markAsRead();
 
-        $transaksi = Transaksi::findOrFail($id);
+        return response()->json(['success' => true, 'message' => 'Notifikasi dibaca']);
+    }
 
-        if ($transaksi->status !== 'menunggu') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Transaksi sudah diverifikasi'
-            ], 422);
-        }
-
-        $transaksi->update([
-            'status' => 'ditolak',
-            'pesan_ditolak' => $request->pesan_ditolak,
-            'ditolak_oleh' => Auth::id(), 
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Transaksi berhasil ditolak',
-            'data' => $transaksi
-        ]);
+    // Tandai Semua Notif
+    public function markAllRead()
+    {
+        Auth::user()->unreadNotifications->markAsRead();
+        return response()->json(['success' => true, 'message' => 'Semua notifikasi dibaca']);
     }
 }

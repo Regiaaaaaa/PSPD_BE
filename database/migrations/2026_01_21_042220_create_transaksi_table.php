@@ -11,8 +11,6 @@ return new class extends Migration {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
             $table->foreignId('buku_id')->constrained('buku')->cascadeOnDelete();
-
-            $table->integer('jumlah')->default(1);
             $table->text('kepentingan')->nullable();
             $table->text('pesan_ditolak')->nullable();
 
