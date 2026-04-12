@@ -15,78 +15,79 @@ class LaporanSummaryExport implements FromCollection, WithHeadings, WithStyles
 
     public function __construct($dari, $sampai, $statusTransaksi = null, $statusDenda = null)
     {
-        $this->dari = $dari;
-        $this->sampai = $sampai;
+        $this->dari            = $dari;
+        $this->sampai          = $sampai;
         $this->statusTransaksi = $statusTransaksi;
-        $this->statusDenda = $statusDenda;
+        $this->statusDenda     = $statusDenda;
     }
 
     public function collection()
     {
-        // ── Transaksi ──
+        // Transaksi
         $transaksiQuery = Transaksi::whereBetween('created_at', [$this->dari, $this->sampai]);
         if ($this->statusTransaksi) $transaksiQuery->where('status', $this->statusTransaksi);
         $transaksi = $transaksiQuery->get();
 
-        $totalTransaksi      = $transaksi->count();
-        $totalDipinjam       = $transaksi->where('status', 'dipinjam')->count();
-        $totalKembali        = $transaksi->where('status', 'kembali')->count();
-        $totalDitolak        = $transaksi->where('status', 'ditolak')->count();
-        
+        $totalKembali    = $transaksi->where('status', 'kembali')->count();
+        $totalDitolak    = $transaksi->where('status', 'ditolak')->count();
 
-        // ── Denda ──
+        // Total transaksi 
+        $totalTransaksi  = $totalKembali + $totalDitolak;
+
+        // Denda 
         $dendaQuery = Denda::whereBetween('created_at', [$this->dari, $this->sampai]);
         if ($this->statusDenda) $dendaQuery->where('status_pembayaran', $this->statusDenda);
         $denda = $dendaQuery->get();
 
-        $totalDenda          = $denda->count();
-        $totalNominalDenda   = $denda->sum('nominal');
-        $totalLunas          = $denda->where('status_pembayaran', 'lunas')->count();
-        $totalBelumLunas     = $denda->where('status_pembayaran', 'belum_lunas')->count();
-        $nominalLunas        = $denda->where('status_pembayaran', 'lunas')->sum('nominal');
-        $nominalBelumLunas   = $denda->where('status_pembayaran', 'belum_lunas')->sum('nominal');
+        $totalDenda        = $denda->count();
+        $totalNominalDenda = $denda->sum('nominal');
+        $totalLunas        = $denda->where('status_pembayaran', 'lunas')->count();
+        $totalBelumLunas   = $denda->where('status_pembayaran', 'belum_lunas')->count();
+        $nominalLunas      = $denda->where('status_pembayaran', 'lunas')->sum('nominal');
+        $nominalBelumLunas = $denda->where('status_pembayaran', 'belum_lunas')->sum('nominal');
+
+        $periodeLabel = \Carbon\Carbon::parse($this->dari)->translatedFormat('F Y')
+            . ' (' . \Carbon\Carbon::parse($this->dari)->format('Y-m-d')
+            . ' s/d ' . \Carbon\Carbon::parse($this->sampai)->format('Y-m-d') . ')';
 
         return collect([
-            // Header section transaksi
+            // Transaksi 
             ['REKAP TRANSAKSI', '', ''],
             ['Keterangan', 'Jumlah', ''],
-            ['Total Transaksi',       $totalTransaksi,  ''],
-            ['Status Dipinjam',       $totalDipinjam,   ''],
-            ['Status Kembali',        $totalKembali,    ''],
-            ['Status Ditolak',        $totalDitolak,    ''],
+            ['Total Transaksi (Kembali + Ditolak)', $totalTransaksi, ''],
+            ['Status Kembali',                      $totalKembali,   ''],
+            ['Status Ditolak',                      $totalDitolak,   ''],
 
             // Spacer
             ['', '', ''],
 
-            // Header section denda
+            // Header 
             ['REKAP DENDA', '', ''],
             ['Keterangan', 'Jumlah', 'Total Nominal (Rp)'],
-            ['Total Denda',           $totalDenda,       'Rp ' . number_format($totalNominalDenda, 0, ',', '.')],
-            ['Denda Lunas',           $totalLunas,       'Rp ' . number_format($nominalLunas, 0, ',', '.')],
-            ['Denda Belum Lunas',     $totalBelumLunas,  'Rp ' . number_format($nominalBelumLunas, 0, ',', '.')],
+            ['Total Denda',       $totalDenda,      'Rp ' . number_format($totalNominalDenda, 0, ',', '.')],
+            ['Denda Lunas',       $totalLunas,      'Rp ' . number_format($nominalLunas, 0, ',', '.')],
+            ['Denda Belum Lunas', $totalBelumLunas, 'Rp ' . number_format($nominalBelumLunas, 0, ',', '.')],
 
             // Spacer
             ['', '', ''],
 
-            /// Periode
-            ['Periode', \Carbon\Carbon::parse($this->dari)->translatedFormat('F Y') . ' (' . \Carbon\Carbon::parse($this->dari)->format('Y-m-d') . ' s/d ' . \Carbon\Carbon::parse($this->sampai)->format('Y-m-d') . ')', ''],
+            // Periode 
+            ['Periode', $periodeLabel, ''],
         ]);
     }
 
     public function headings(): array
     {
-        // Kosong karena heading sudah ada di dalam collection
         return [];
     }
 
     public function styles(Worksheet $sheet)
     {
         return [
-            // Bold baris header section
-            1  => ['font' => ['bold' => true, 'size' => 12]],
-            9  => ['font' => ['bold' => true, 'size' => 12]],
-            2  => ['font' => ['bold' => true]],
-            10 => ['font' => ['bold' => true]],
+            1 => ['font' => ['bold' => true, 'size' => 12]],  
+            2 => ['font' => ['bold' => true]],                
+            7 => ['font' => ['bold' => true, 'size' => 12]], 
+            8 => ['font' => ['bold' => true]],                
         ];
     }
 }

@@ -21,7 +21,8 @@ class LaporanController extends Controller
         [$dari, $sampai] = $this->getPeriode($request);
 
         $query = Transaksi::with(['user', 'buku'])
-                    ->whereBetween('created_at', [$dari, $sampai]);
+                    ->whereBetween('created_at', [$dari, $sampai])
+                    ->whereIn('status', ['kembali', 'ditolak']);
 
         if ($request->status) $query->where('status', $request->status);
 
@@ -44,7 +45,9 @@ class LaporanController extends Controller
         [$dari, $sampai] = $this->getPeriode($request);
         $status = $request->status ?? null;
 
-        $query = Transaksi::with(['user', 'buku'])->whereBetween('created_at', [$dari, $sampai]);
+        $query = Transaksi::with(['user', 'buku'])
+                    ->whereBetween('created_at', [$dari, $sampai])
+                    ->whereIn('status', ['kembali', 'ditolak']);
         if ($status) $query->where('status', $status);
 
         $data    = $query->get();
@@ -107,24 +110,31 @@ class LaporanController extends Controller
         return $pdf->download('laporan-denda.pdf');
     }
 
-    // Summary
     public function summary(Request $request)
     {
         [$dari, $sampai] = $this->getPeriode($request);
         $statusTransaksi = $request->status ?? null;
         $statusDenda     = $request->status_pembayaran ?? null;
 
-        $baseTransaksi = Transaksi::whereBetween('created_at', [$dari, $sampai]);
-        if ($statusTransaksi) $baseTransaksi->where('status', $statusTransaksi);
+        // Transaksi
+        $baseTransaksi = Transaksi::whereBetween('created_at', [$dari, $sampai])
+                            ->whereIn('status', ['kembali', 'ditolak']);
 
-        $totalTransaksi = (clone $baseTransaksi)->count();
-        $dipinjam       = (clone $baseTransaksi)->where('status', 'dipinjam')->count();
-        $kembali        = (clone $baseTransaksi)->where('status', 'kembali')->count();
-        $ditolak        = (clone $baseTransaksi)->where('status', 'ditolak')->count();
-        $dibatalkan     = (clone $baseTransaksi)->where('status', 'dibatalkan')->count();
+        if ($statusTransaksi) {
+            $baseTransaksi->where('status', $statusTransaksi);
+        }
 
-        $baseDenda    = Denda::whereBetween('created_at', [$dari, $sampai]);
-        if ($statusDenda) $baseDenda->where('status_pembayaran', $statusDenda);
+        $kembali = (clone $baseTransaksi)->where('status', 'kembali')->count();
+        $ditolak = (clone $baseTransaksi)->where('status', 'ditolak')->count();
+
+        $totalTransaksi = $kembali + $ditolak;
+
+        // Denda
+        $baseDenda = Denda::whereBetween('created_at', [$dari, $sampai]);
+
+        if ($statusDenda) {
+            $baseDenda->where('status_pembayaran', $statusDenda);
+        }
 
         $totalNominal = (clone $baseDenda)->sum('nominal');
         $lunas        = (clone $baseDenda)->where('status_pembayaran', 'lunas')->count();
@@ -138,11 +148,9 @@ class LaporanController extends Controller
                 'sampai' => $sampai->toDateString(),
             ],
             'transaksi' => [
-                'total'      => $totalTransaksi,
-                'dipinjam'   => $dipinjam,
-                'kembali'    => $kembali,
-                'ditolak'    => $ditolak,
-                'dibatalkan' => $dibatalkan,
+                'total'   => $totalTransaksi,
+                'kembali' => $kembali,
+                'ditolak' => $ditolak,
             ],
             'denda' => [
                 'total_nominal' => $totalNominal,
@@ -167,20 +175,22 @@ class LaporanController extends Controller
         $statusTransaksi = $request->status ?? null;
         $statusDenda     = $request->status_pembayaran ?? null;
 
-        $transaksiQuery = Transaksi::with(['user', 'buku'])->whereBetween('created_at', [$dari, $sampai]);
+        $transaksiQuery = Transaksi::whereBetween('created_at', [$dari, $sampai])
+                            ->whereIn('status', ['kembali', 'ditolak']);
         if ($statusTransaksi) $transaksiQuery->where('status', $statusTransaksi);
         $transaksiData = $transaksiQuery->get();
 
-        $dendaQuery = Denda::with(['transaksi.user', 'transaksi.buku'])->whereBetween('created_at', [$dari, $sampai]);
+        $dendaQuery = Denda::whereBetween('created_at', [$dari, $sampai]);
         if ($statusDenda) $dendaQuery->where('status_pembayaran', $statusDenda);
         $dendaData = $dendaQuery->get();
 
+        $kembali = $transaksiData->where('status', 'kembali')->count();
+        $ditolak = $transaksiData->where('status', 'ditolak')->count();
+
         $summaryTransaksi = [
-            'total'      => $transaksiData->count(),
-            'dipinjam'   => $transaksiData->where('status', 'dipinjam')->count(),
-            'kembali'    => $transaksiData->where('status', 'kembali')->count(),
-            'ditolak'    => $transaksiData->where('status', 'ditolak')->count(),
-            'dibatalkan' => $transaksiData->where('status', 'dibatalkan')->count(),
+            'total'   => $kembali + $ditolak,
+            'kembali' => $kembali,
+            'ditolak' => $ditolak,
         ];
 
         $summaryDenda = [

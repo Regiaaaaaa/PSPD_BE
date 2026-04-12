@@ -16,22 +16,22 @@
     <h4>Periode: {{ $periode['bulan'] }} {{ $periode['tahun'] }} ({{ $periode['dari'] }} s/d {{ $periode['sampai'] }})</h4>
 
     <h4>Transaksi</h4>
-    <table>
-        <thead>
-            <tr>
-                <th>Total Transaksi</th>
-                <th>Dipinjam</th>
-                <th>Kembali</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td>{{ $transaksi['total'] }}</td>
-                <td>{{ $transaksi['dipinjam'] }}</td>
-                <td>{{ $transaksi['kembali'] }}</td>
-            </tr>
-        </tbody>
-    </table>
+<table>
+    <thead>
+        <tr>
+            <th>Total Transaksi</th>
+            <th>Status Kembali</th>
+            <th>Status Ditolak</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>{{ $transaksi['total'] }}</td>
+            <td>{{ $transaksi['kembali'] }}</td>
+            <td>{{ $transaksi['ditolak'] }}</td>
+        </tr>
+    </tbody>
+</table>
 
     <h4>Denda</h4>
     <table>

@@ -22,10 +22,8 @@
 
 <div class="summary">
     <p>Total Transaksi: {{ $summary['transaksi']['total'] }}</p>
-    <p>Dipinjam: {{ $summary['transaksi']['dipinjam'] }}</p>
     <p>Kembali: {{ $summary['transaksi']['kembali'] }}</p>
     <p>Ditolak: {{ $summary['transaksi']['ditolak'] }}</p>
-    <p>Dibatalkan: {{ $summary['transaksi']['dibatalkan'] }}</p>
 </div>
 
 <table>

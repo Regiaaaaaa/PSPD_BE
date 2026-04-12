@@ -22,24 +22,24 @@ class LaporanTransaksiExport implements FromCollection, WithHeadings, WithStyles
     }
 
     public function collection()
-    {
-        $query = Transaksi::with(['user', 'buku'])
-            ->whereBetween('created_at', [$this->dari, $this->sampai]);
+{
+    $query = Transaksi::with(['user', 'buku'])
+        ->whereBetween('created_at', [$this->dari, $this->sampai])
+        ->whereIn('status', ['kembali', 'ditolak']); 
+    if ($this->status) $query->where('status', $this->status);
 
-        if ($this->status) $query->where('status', $this->status);
-
-        return $query->get()->map(function ($t, $index) {
-            return [
-                'No'          => $index + 1,
-                'Peminjam'    => $t->user->name,
-                'Judul Buku'  => $t->buku->judul,
-                'Tgl Pinjam'  => $t->tgl_pinjam ? \Carbon\Carbon::parse($t->tgl_pinjam)->format('d M Y') : '-',
-                'Deadline'    => $t->tgl_deadline ? \Carbon\Carbon::parse($t->tgl_deadline)->format('d M Y') : '-',
-                'Tgl Kembali' => $t->tgl_kembali ? \Carbon\Carbon::parse($t->tgl_kembali)->format('d M Y') : '-',
-                'Status'      => ucfirst($t->status),
-            ];
-        });
-    }
+    return $query->get()->map(function ($t, $index) {
+        return [
+            'No'          => $index + 1,
+            'Peminjam'    => $t->user->name,
+            'Judul Buku'  => $t->buku->judul,
+            'Tgl Pinjam'  => $t->tgl_pinjam ? \Carbon\Carbon::parse($t->tgl_pinjam)->format('d M Y') : '-',
+            'Deadline'    => $t->tgl_deadline ? \Carbon\Carbon::parse($t->tgl_deadline)->format('d M Y') : '-',
+            'Tgl Kembali' => $t->tgl_kembali ? \Carbon\Carbon::parse($t->tgl_kembali)->format('d M Y') : '-',
+            'Status'      => ucfirst($t->status),
+        ];
+    });
+}
 
     public function headings(): array
     {
@@ -49,7 +49,7 @@ class LaporanTransaksiExport implements FromCollection, WithHeadings, WithStyles
     public function styles(Worksheet $sheet)
     {
         return [
-            1 => ['font' => ['bold' => true]], 
+            1 => ['font' => ['bold' => true]],
         ];
     }
 
