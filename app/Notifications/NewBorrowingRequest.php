@@ -22,15 +22,19 @@ class NewBorrowingRequest extends Notification
     }
 
     public function toArray(object $notifiable): array
-    {
-        return [
-            'transaksi_id' => $this->transaksi->id,
-            'user_id'      => $this->transaksi->user_id,
-            'nama_peminjam'=> $this->transaksi->user->name, 
-            'judul_buku'   => $this->transaksi->buku->judul, 
-            'message'      => "Permintaan pinjam baru: " . $this->transaksi->user->name . " ingin meminjam buku '" . $this->transaksi->buku->judul . "'.",
-            'type'         => 'request_approval', 
-            'status'       => 'pending'
-        ];
-    }
+{
+    $judulBuku = $this->transaksi->details
+        ->map(fn($d) => $d->buku->judul ?? '-')
+        ->join(', ');
+
+    return [
+        'transaksi_id' => $this->transaksi->id,
+        'user_id'      => $this->transaksi->user_id,
+        'nama_peminjam'=> $this->transaksi->user->name,
+        'judul_buku'   => $judulBuku,
+        'message'      => "Permintaan pinjam baru: {$this->transaksi->user->name} ingin meminjam buku {$judulBuku}",
+        'type'         => 'request_approval',
+        'status'       => 'pending'
+    ];
+}
 }

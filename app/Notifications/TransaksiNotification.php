@@ -22,22 +22,25 @@ class TransaksiNotification extends Notification
     }
 
     public function toArray($notifiable)
-    {
-        $status = $this->transaksi->status;
-        $judul = $this->transaksi->buku->judul; 
-        
-        $pesan = "";
-        if ($status === 'dipinjam') {
-            $pesan = "Peminjaman buku '$judul' telah DISETUJUI.";
-        } elseif ($status === 'ditolak') {
-            $pesan = "Peminjaman buku '$judul' DITOLAK. Alasan: " . ($this->transaksi->pesan_ditolak ?? '-');
-        }
-
-        return [
-            'transaksi_id' => $this->transaksi->id,
-            'judul'        => $judul,
-            'status'       => $status,
-            'message'      => $pesan,
-        ];
+{
+    $status = $this->transaksi->status;
+    
+    $judulBuku = $this->transaksi->details
+        ->map(fn($d) => $d->buku->judul ?? '-')
+        ->join(', ');
+    
+    $pesan = "";
+    if ($status === 'dipinjam') {
+        $pesan = "Peminjaman buku '$judulBuku' telah DISETUJUI.";
+    } elseif ($status === 'ditolak') {
+        $pesan = "Peminjaman buku '$judulBuku' DITOLAK. Alasan: " . ($this->transaksi->pesan_ditolak ?? '-');
     }
+
+    return [
+        'transaksi_id' => $this->transaksi->id,
+        'judul'        => $judulBuku,
+        'status'       => $status,
+        'message'      => $pesan,
+    ];
+}
 }
