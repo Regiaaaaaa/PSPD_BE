@@ -4,9 +4,10 @@ namespace App\Http\Controllers\Api\Users;
 
 use App\Http\Controllers\Controller;
 use App\Models\Transaksi;
+use App\Models\DetailTransaksi;
 use App\Models\Buku;
 use App\Models\Denda;
-use App\Models\User; 
+use App\Models\User;
 use App\Notifications\NewBorrowingRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -17,10 +18,13 @@ class TransaksiController extends Controller
     // List Riwayat Peminjaman User
     public function index()
     {
-        $transaksi = Transaksi::with(['buku', 'denda'])
-            ->where('user_id', Auth::id())
-            ->latest()
-            ->get();
+        $transaksi = Transaksi::with([
+            'details.buku',
+            'details.denda'
+        ])
+        ->where('user_id', Auth::id())
+        ->latest()
+        ->get();
 
         return response()->json([
             'success' => true,
@@ -31,7 +35,10 @@ class TransaksiController extends Controller
     // Cek Denda Belum Lunas
     private function getDendaAktif(int $userId): ?Denda
     {
-        return Denda::whereHas('transaksi', fn($q) => $q->where('user_id', $userId))
+        return Denda::with('transaksiDetail.buku')
+            ->whereHas('transaksiDetail.transaksi', function ($q) use ($userId) {
+                $q->where('user_id', $userId);
+            })
             ->where('status_pembayaran', 'belum_lunas')
             ->first();
     }
@@ -42,86 +49,114 @@ class TransaksiController extends Controller
         $userId = Auth::id();
 
         $request->validate([
-            'books' => 'required|array|min:1',
-            'books.*.buku_id' => 'required|exists:buku,id', // pastiin nama tabel 'bukus' atau 'buku' sesuai migrasi
-            'books.*.tgl_deadline' => 'required|date|after_or_equal:today',
-            'books.*.kepentingan' => 'nullable|string',
+            'books' => 'required|array|min:1|max:3',
+            'books.*' => 'exists:buku,id',
+            'tgl_deadline' => 'required|date|after_or_equal:today',
+            'kepentingan' => 'nullable|string'
         ]);
 
-        $adaBukuTelat = Transaksi::where('user_id', $userId)
+        // Cek pinjaman aktif
+        $masihAdaPinjaman = Transaksi::where('user_id', $userId)
             ->whereIn('status', ['dipinjam', 'menunggu'])
-            ->whereNull('tgl_kembali')
-            ->where('tgl_deadline', '<', now()->toDateString())
+            ->exists();
+
+        if ($masihAdaPinjaman) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Masih ada buku yang belum dikembalikan.'
+            ], 422);
+        }
+
+        // Cek buku telat
+        $adaBukuTelat = Transaksi::where('user_id', $userId)
+            ->where('status', 'dipinjam')
+            ->where('tgl_deadline', '<', now())
+            ->whereHas('details', function ($q) {
+                $q->where('status', 'dipinjam');
+            })
             ->exists();
 
         if ($this->getDendaAktif($userId) || $adaBukuTelat) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gak bisa pinjam dulu, Bro! Selesaikan urusan denda atau balikin buku yang telat.'
+                'message' => 'Selesaikan denda atau kembalikan buku telat terlebih dahulu'
             ], 422);
         }
 
         DB::beginTransaction();
-        try {
-            $createdTransactions = [];
 
-            foreach ($request->books as $item) {
-                $buku = Buku::findOrFail($item['buku_id']);
+        try {
+
+            // Buat transaksi utama
+            $transaksi = Transaksi::create([
+                'user_id' => $userId,
+                'kepentingan' => $request->kepentingan,
+                'tgl_deadline' => $request->tgl_deadline,
+                'status' => 'menunggu'
+            ]);
+
+            foreach ($request->books as $bukuId) {
+
+                $buku = Buku::find($bukuId);
+
+                if (!$buku) {
+                    throw new \Exception("Buku tidak ditemukan");
+                }
 
                 if ($buku->stok_tersedia < 1) {
-                    throw new \Exception("Maaf, stok buku '{$buku->judul}' habis!");
-                }
-                $isPinjam = Transaksi::where('user_id', $userId)
-                    ->where('buku_id', $buku->id)
-                    ->whereIn('status', ['dipinjam', 'menunggu'])
-                    ->whereNull('tgl_kembali')
-                    ->exists();
-
-                if ($isPinjam) {
-                    throw new \Exception("Buku '{$buku->judul}' masih dalam status pinjam/menunggu.");
+                    throw new \Exception("Stok buku {$buku->judul} habis");
                 }
 
-                $transaksi = Transaksi::create([
-                    'user_id'      => $userId,
-                    'buku_id'      => $buku->id,
-                    'kepentingan'  => $item['kepentingan'] ?? null,
-                    'tgl_deadline' => $item['tgl_deadline'],
-                    'status'       => 'menunggu',
+                DetailTransaksi::create([
+                    'transaksi_id' => $transaksi->id,
+                    'buku_id' => $buku->id,
+                    'status' => 'menunggu'
                 ]);
 
                 $buku->decrement('stok_tersedia');
-                $transaksi->load(['user', 'buku']);
-                $createdTransactions[] = $transaksi;
             }
 
-            // Trigger Notifikasi
+            // Notifikasi Operator
             $operators = User::where('role', 'operator')->get();
+
+            $transaksi->load('details.buku', 'user');
+
             foreach ($operators as $operator) {
-                foreach ($createdTransactions as $t) {
-                    $operator->notify(new NewBorrowingRequest($t));
-                }
+                $operator->notify(new NewBorrowingRequest($transaksi));
             }
 
             DB::commit();
+
             return response()->json([
                 'success' => true,
-                'message' => 'Peminjaman berhasil diajukan! Notifikasi sudah dikirim ke Operator.',
-                'data'    => $createdTransactions
+                'message' => 'Peminjaman berhasil diajukan',
+                'data' => $transaksi->load('details.buku')
             ], 201);
 
         } catch (\Exception $e) {
+
             DB::rollBack();
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 400);
         }
     }
 
     // Detail Transaksi
     public function show($id)
     {
-        $transaksi = Transaksi::with(['buku', 'denda', 'disetujuiOleh', 'diterimaOleh', 'ditolakOleh'])
-            ->where('id', $id)
-            ->where('user_id', Auth::id())
-            ->firstOrFail();
+        $transaksi = Transaksi::with([
+            'details.buku',
+            'details.denda',
+            'disetujuiOleh',
+            'diterimaOleh',
+            'ditolakOleh'
+        ])
+        ->where('id', $id)
+        ->where('user_id', Auth::id())
+        ->firstOrFail();
 
         return response()->json([
             'success' => true,
@@ -129,103 +164,152 @@ class TransaksiController extends Controller
         ]);
     }
 
-    // Batalkan Pengajuan
-    public function cancel($id)
-    {
-        $transaksi = Transaksi::where('user_id', Auth::id())
-            ->where('status', 'menunggu')
-            ->findOrFail($id);
+    // Batalkan
+    // Batalkan
+public function cancel($id)
+{
+    $transaksi = Transaksi::where('user_id', Auth::id())
+        ->where('status', 'menunggu')
+        ->with('details')
+        ->findOrFail($id);
 
-        DB::beginTransaction();
-        try {
-            $transaksi->update(['status' => 'dibatalkan']);
-            Buku::where('id', $transaksi->buku_id)->increment('stok_tersedia');
+    DB::beginTransaction();
 
-            DB::commit();
-            return response()->json([
-                'success' => true,
-                'message' => 'Pengajuan peminjaman berhasil dibatalkan dan stok dikembalikan.'
+    try {
+
+        $transaksi->update([
+            'status' => 'dibatalkan'
+        ]);
+
+        foreach ($transaksi->details as $detail) {
+
+            // Update status detail
+            $detail->update([
+                'status' => 'dibatalkan'
             ]);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json(['success' => false, 'message' => 'Gagal membatalkan.'], 400);
-        }
-    }
 
-    // Cek Denda & Keterlambatan
-    public function cekDenda()
-    {
-        $userId = Auth::id();
-        $denda = $this->getDendaAktif($userId);
-
-        $transaksiTelat = Transaksi::with('buku')
-            ->where('user_id', $userId)
-            ->whereIn('status', ['dipinjam', 'menunggu'])
-            ->whereNull('tgl_kembali')
-            ->where('tgl_deadline', '<', now()->toDateString())
-            ->first();
-
-        if ($denda) {
-            return response()->json([
-                'ada_denda'    => true,
-                'tipe'         => 'denda_tercatat',
-                'denda'        => [
-                    'id'         => $denda->id,
-                    'nominal'    => $denda->nominal,
-                    'judul_buku' => $denda->transaksi?->buku?->judul,
-                ],
-            ]);
+            // Kembalikan stok buku
+            Buku::where('id', $detail->buku_id)
+                ->increment('stok_tersedia');
         }
 
-        if ($transaksiTelat) {
-            return response()->json([
-                'ada_denda'    => true,
-                'tipe'         => 'buku_telat',
-                'denda'        => [
-                    'id'         => null,
-                    'nominal'    => $transaksiTelat->denda_berjalan, // pastiin ada attribute ini di model Transaksi
-                    'judul_buku' => $transaksiTelat->buku?->judul,
-                ],
-            ]);
-        }
-
-        return response()->json(['ada_denda' => false]);
-    }
-
-    // Ambil Notifikasi
-    public function getNotifications()
-    {
-        /** @var \App\Models\User $user */
-        $user = Auth::user();
-        $notifications = $user->notifications()->limit(10)->get();
-        $unreadCount = $user->unreadNotifications()->count();
+        DB::commit();
 
         return response()->json([
             'success' => true,
-            'unread_count' => $unreadCount,
-            'data' => $notifications
+            'message' => 'Pengajuan dibatalkan'
+        ]);
+
+    } catch (\Exception $e) {
+
+        DB::rollBack();
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Gagal membatalkan'
+        ], 400);
+    }
+}
+
+    // Cek Denda
+    public function cekDenda()
+    {
+        $userId = Auth::id();
+
+        $denda = $this->getDendaAktif($userId);
+
+        $transaksiTelat = Transaksi::with('details.buku')
+            ->where('user_id', $userId)
+            ->where('status', 'dipinjam')
+            ->where('tgl_deadline', '<', now())
+            ->whereHas('details', function ($q) {
+                $q->where('status', 'dipinjam');
+            })
+            ->first();
+
+        // Denda tercatat
+        if ($denda) {
+
+            $judul = null;
+
+            if ($denda->transaksiDetail && $denda->transaksiDetail->buku) {
+                $judul = $denda->transaksiDetail->buku->judul;
+            }
+
+            return response()->json([
+                'ada_denda' => true,
+                'tipe' => 'denda_tercatat',
+                'denda' => [
+                    'id' => $denda->id,
+                    'nominal' => $denda->nominal,
+                    'judul_buku' => $judul,
+                ],
+            ]);
+        }
+
+        // Buku telat
+        if ($transaksiTelat) {
+
+            $judul = null;
+
+            if ($transaksiTelat->details->count() > 0) {
+                $detail = $transaksiTelat->details->first();
+
+                if ($detail->buku) {
+                    $judul = $detail->buku->judul;
+                }
+            }
+
+            return response()->json([
+                'ada_denda' => true,
+                'tipe' => 'buku_telat',
+                'denda' => [
+                    'id' => null,
+                    'nominal' => $transaksiTelat->denda_berjalan,
+                    'judul_buku' => $judul,
+                ],
+            ]);
+        }
+
+        return response()->json([
+            'ada_denda' => false
         ]);
     }
 
-    // Tandai Baca
-    public function markAsRead($id)
+    // Notifikasi
+    public function getNotifications()
     {
-        /** @var \App\Models\User $user */
         $user = Auth::user();
-        $notification = $user->notifications()->where('id', $id)->first();
 
-        if ($notification) {
-            $notification->markAsRead();
-            return response()->json(['success' => true, 'message' => 'Notifikasi dibaca']);
-        }
-
-        return response()->json(['success' => false, 'message' => 'Notifikasi tidak ditemukan'], 404);
+        return response()->json([
+            'success' => true,
+            'unread_count' => $user->unreadNotifications()->count(),
+            'data' => $user->notifications()->limit(10)->get()
+        ]);
     }
 
-    // Tandai Semua Baca
+    public function markAsRead($id)
+    {
+        $notif = Auth::user()
+            ->notifications()
+            ->where('id', $id)
+            ->first();
+
+        if ($notif) {
+            $notif->markAsRead();
+        }
+
+        return response()->json([
+            'success' => true
+        ]);
+    }
+
     public function markAllRead()
     {
         Auth::user()->unreadNotifications->markAsRead();
-        return response()->json(['success' => true, 'message' => 'Semua ditandai dibaca']);
-    } 
+
+        return response()->json([
+            'success' => true
+        ]);
+    }
 }

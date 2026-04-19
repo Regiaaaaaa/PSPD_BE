@@ -14,23 +14,30 @@
 <body>
     <h2>Laporan Denda</h2>
     <h4>Periode: {{ $periode['bulan'] }} {{ $periode['tahun'] }} ({{ $periode['dari'] }} s/d {{ $periode['sampai'] }})</h4>
+
     <table>
         <thead>
             <tr>
+                <th>No</th>
                 <th>Peminjam</th>
                 <th>Buku</th>
+                <th>Tgl Pinjam</th>
+                <th>Deadline</th>
                 <th>Nominal</th>
                 <th>Status Pembayaran</th>
-                <th>Dibayar pada</th>
+                <th>Dibayar Pada</th>
             </tr>
         </thead>
         <tbody>
-            @foreach ($data as $d)
+            @foreach ($data as $i => $d)
                 <tr>
-                    <td>{{ $d->transaksi->user->name }}</td>
-                    <td>{{ $d->transaksi->buku->judul }}</td>
-                    <td>{{ number_format($d->nominal, 0, ',', '.') }}</td>
-                    <td>{{ ucfirst($d->status_pembayaran) }}</td>
+                    <td>{{ $i + 1 }}</td>
+                    <td>{{ optional($d->transaksiDetail?->transaksi?->user)->name ?? 'User Dihapus' }}</td>
+                    <td>{{ optional($d->transaksiDetail?->buku)->judul ?? 'Buku Dihapus' }}</td>
+                    <td>{{ $d->transaksiDetail?->transaksi?->tgl_pinjam ? \Carbon\Carbon::parse($d->transaksiDetail->transaksi->tgl_pinjam)->format('d M Y') : '-' }}</td>
+                    <td>{{ $d->transaksiDetail?->transaksi?->tgl_deadline ? \Carbon\Carbon::parse($d->transaksiDetail->transaksi->tgl_deadline)->format('d M Y') : '-' }}</td>
+                    <td>Rp {{ number_format($d->nominal, 0, ',', '.') }}</td>
+                    <td>{{ ucfirst(str_replace('_', ' ', $d->status_pembayaran)) }}</td>
                     <td>{{ $d->tgl_pembayaran ? \Carbon\Carbon::parse($d->tgl_pembayaran)->format('d M Y') : '-' }}</td>
                 </tr>
             @endforeach

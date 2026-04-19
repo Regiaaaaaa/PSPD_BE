@@ -10,17 +10,18 @@ class Denda extends Model
     use HasFactory;
 
     protected $table = 'denda';
+
     protected $fillable = [
-        'transaksi_id',
+        'detail_transaksi_id',
         'nominal',
         'status_pembayaran',
         'tgl_pembayaran',
         'operator_id'
     ];
 
-    public function transaksi()
+    public function transaksiDetail()
     {
-        return $this->belongsTo(Transaksi::class);
+        return $this->belongsTo(DetailTransaksi::class, 'detail_transaksi_id');
     }
 
     public function operator()
@@ -28,4 +29,3 @@ class Denda extends Model
         return $this->belongsTo(User::class, 'operator_id');
     }
 }
-

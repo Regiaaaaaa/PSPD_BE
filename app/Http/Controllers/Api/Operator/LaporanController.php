@@ -20,15 +20,41 @@ class LaporanController extends Controller
     {
         [$dari, $sampai] = $this->getPeriode($request);
 
-        $query = Transaksi::with(['user', 'buku'])
-                    ->whereBetween('created_at', [$dari, $sampai])
-                    ->whereIn('status', ['kembali', 'ditolak']);
+        $query = Transaksi::with([
+            'user',
+            'details.buku'
+        ])
+        ->whereBetween('created_at', [$dari, $sampai])
+        ->whereIn('status', ['dipinjam', 'kembali']);
 
-        if ($request->status) $query->where('status', $request->status);
+        if ($request->status) {
+            $query->where('status', $request->status);
+        }
+
+        $data = $query->orderBy('created_at', 'desc')->get()->map(function ($trx) {
+            return [
+                'id'           => $trx->id,
+                'nama_user'    => optional($trx->user)->name ?? 'User Dihapus',
+                'status'       => $trx->status,
+                'tgl_pinjam'   => $trx->tgl_pinjam,
+                'tgl_deadline' => $trx->tgl_deadline,
+
+                'buku' => $trx->details->map(function ($dt) {
+                    return [
+                        'id'          => optional($dt->buku)->id,
+                        'judul'       => optional($dt->buku)->judul ?? 'Buku Dihapus',
+                        'tgl_kembali' => $dt->tgl_kembali, 
+                    ];
+                }),
+                'tgl_kembali' => $trx->details->whereNotNull('tgl_kembali')->first()?->tgl_kembali,
+
+                'total_buku' => $trx->details->count()
+            ];
+        });
 
         return response()->json([
             'message' => 'Laporan transaksi',
-            'data'    => $query->orderBy('created_at', 'desc')->get()
+            'data'    => $data
         ]);
     }
 
@@ -37,7 +63,10 @@ class LaporanController extends Controller
         [$dari, $sampai] = $this->getPeriode($request);
         $status = $request->status ?? null;
 
-        return Excel::download(new LaporanTransaksiExport($dari, $sampai, $status), 'laporan-transaksi.xlsx');
+        return Excel::download(
+            new LaporanTransaksiExport($dari, $sampai, $status),
+            'laporan-transaksi.xlsx'
+        );
     }
 
     public function exportTransaksiPdf(Request $request)
@@ -45,13 +74,20 @@ class LaporanController extends Controller
         [$dari, $sampai] = $this->getPeriode($request);
         $status = $request->status ?? null;
 
-        $query = Transaksi::with(['user', 'buku'])
-                    ->whereBetween('created_at', [$dari, $sampai])
-                    ->whereIn('status', ['kembali', 'ditolak']);
-        if ($status) $query->where('status', $status);
-
-        $data    = $query->get();
         $summary = $this->summary($request)->getData(true);
+
+        $query = Transaksi::with([
+            'user',
+            'details.buku'  
+        ])
+        ->whereBetween('created_at', [$dari, $sampai])
+        ->whereIn('status', ['dipinjam', 'kembali']);
+
+        if ($status) {
+            $query->where('status', $status);
+        }
+
+        $data = $query->get();
 
         $pdf = Pdf::loadView('pdf.laporan-transaksi', [
             'data'    => $data,
@@ -67,10 +103,15 @@ class LaporanController extends Controller
     {
         [$dari, $sampai] = $this->getPeriode($request);
 
-        $query = Denda::with(['transaksi.user', 'transaksi.buku'])
-                    ->whereBetween('created_at', [$dari, $sampai]);
+        $query = Denda::with([
+            'transaksiDetail.transaksi.user',
+            'transaksiDetail.buku'
+        ])
+        ->whereBetween('created_at', [$dari, $sampai]);
 
-        if ($request->status_pembayaran) $query->where('status_pembayaran', $request->status_pembayaran);
+        if ($request->status_pembayaran) {
+            $query->where('status_pembayaran', $request->status_pembayaran);
+        }
 
         return response()->json([
             'message' => 'Laporan denda',
@@ -83,7 +124,10 @@ class LaporanController extends Controller
         [$dari, $sampai] = $this->getPeriode($request);
         $status = $request->status_pembayaran ?? null;
 
-        return Excel::download(new LaporanDendaExport($dari, $sampai, $status), 'laporan-denda.xlsx');
+        return Excel::download(
+            new LaporanDendaExport($dari, $sampai, $status),
+            'laporan-denda.xlsx'
+        );
     }
 
     public function exportDendaPdf(Request $request)
@@ -91,49 +135,50 @@ class LaporanController extends Controller
         [$dari, $sampai] = $this->getPeriode($request);
         $status = $request->status_pembayaran ?? null;
 
-        $query = Denda::with(['transaksi.user', 'transaksi.buku'])->whereBetween('created_at', [$dari, $sampai]);
-        if ($status) $query->where('status_pembayaran', $status);
+        $query = Denda::with([
+            'transaksiDetail.transaksi.user',
+            'transaksiDetail.buku'
+        ])
+        ->whereBetween('created_at', [$dari, $sampai]);
+
+        if ($status) {
+            $query->where('status_pembayaran', $status);
+        }
 
         $data = $query->get();
-        $periode = [
-            'bulan'  => $dari->translatedFormat('F'),
-            'tahun'  => $dari->year,
-            'dari'   => $dari->toDateString(),
-            'sampai' => $sampai->toDateString(),
-        ];
 
         $pdf = Pdf::loadView('pdf.laporan-denda', [
             'data'    => $data,
-            'periode' => $periode
+            'periode' => [                                    
+                'bulan'  => $dari->translatedFormat('F'),
+                'tahun'  => $dari->year,
+                'dari'   => $dari->toDateString(),
+                'sampai' => $sampai->toDateString(),
+            ]
         ]);
 
         return $pdf->download('laporan-denda.pdf');
     }
 
+    // Summary
     public function summary(Request $request)
     {
         [$dari, $sampai] = $this->getPeriode($request);
-        $statusTransaksi = $request->status ?? null;
-        $statusDenda     = $request->status_pembayaran ?? null;
 
-        // Transaksi
         $baseTransaksi = Transaksi::whereBetween('created_at', [$dari, $sampai])
-                            ->whereIn('status', ['kembali', 'ditolak']);
+                            ->whereIn('status', ['dipinjam', 'kembali']);
 
-        if ($statusTransaksi) {
-            $baseTransaksi->where('status', $statusTransaksi);
+        if ($request->status) {
+            $baseTransaksi->where('status', $request->status);
         }
 
-        $kembali = (clone $baseTransaksi)->where('status', 'kembali')->count();
-        $ditolak = (clone $baseTransaksi)->where('status', 'ditolak')->count();
+        $dipinjam = (clone $baseTransaksi)->where('status', 'dipinjam')->count();
+        $kembali  = (clone $baseTransaksi)->where('status', 'kembali')->count();
 
-        $totalTransaksi = $kembali + $ditolak;
-
-        // Denda
         $baseDenda = Denda::whereBetween('created_at', [$dari, $sampai]);
 
-        if ($statusDenda) {
-            $baseDenda->where('status_pembayaran', $statusDenda);
+        if ($request->status_pembayaran) {
+            $baseDenda->where('status_pembayaran', $request->status_pembayaran);
         }
 
         $totalNominal = (clone $baseDenda)->sum('nominal');
@@ -148,9 +193,9 @@ class LaporanController extends Controller
                 'sampai' => $sampai->toDateString(),
             ],
             'transaksi' => [
-                'total'   => $totalTransaksi,
-                'kembali' => $kembali,
-                'ditolak' => $ditolak,
+                'total'    => $dipinjam + $kembali,
+                'dipinjam' => $dipinjam,
+                'kembali'  => $kembali,
             ],
             'denda' => [
                 'total_nominal' => $totalNominal,
@@ -163,55 +208,23 @@ class LaporanController extends Controller
     public function exportSummaryExcel(Request $request)
     {
         [$dari, $sampai] = $this->getPeriode($request);
-        $statusTransaksi = $request->status ?? null;
-        $statusDenda     = $request->status_pembayaran ?? null;
 
-        return Excel::download(new LaporanSummaryExport($dari, $sampai, $statusTransaksi, $statusDenda), 'laporan-summary.xlsx');
+        return Excel::download(
+            new LaporanSummaryExport($dari, $sampai),
+            'laporan-summary.xlsx'
+        );
     }
 
     public function exportSummaryPdf(Request $request)
     {
         [$dari, $sampai] = $this->getPeriode($request);
-        $statusTransaksi = $request->status ?? null;
-        $statusDenda     = $request->status_pembayaran ?? null;
 
-        $transaksiQuery = Transaksi::whereBetween('created_at', [$dari, $sampai])
-                            ->whereIn('status', ['kembali', 'ditolak']);
-        if ($statusTransaksi) $transaksiQuery->where('status', $statusTransaksi);
-        $transaksiData = $transaksiQuery->get();
-
-        $dendaQuery = Denda::whereBetween('created_at', [$dari, $sampai]);
-        if ($statusDenda) $dendaQuery->where('status_pembayaran', $statusDenda);
-        $dendaData = $dendaQuery->get();
-
-        $kembali = $transaksiData->where('status', 'kembali')->count();
-        $ditolak = $transaksiData->where('status', 'ditolak')->count();
-
-        $summaryTransaksi = [
-            'total'   => $kembali + $ditolak,
-            'kembali' => $kembali,
-            'ditolak' => $ditolak,
-        ];
-
-        $summaryDenda = [
-            'total_nominal' => $dendaData->sum('nominal'),
-            'lunas'         => $dendaData->where('status_pembayaran', 'lunas')->count(),
-            'belum_lunas'   => $dendaData->where('status_pembayaran', 'belum_lunas')->count(),
-        ];
-
-        $periode = [
-            'bulan'  => $dari->translatedFormat('F'),
-            'tahun'  => $dari->year,
-            'dari'   => $dari->toDateString(),
-            'sampai' => $sampai->toDateString(),
-        ];
+        $summary = $this->summary($request)->getData(true);
 
         $pdf = Pdf::loadView('pdf.laporan-summary', [
-            'transaksi'      => $summaryTransaksi,
-            'denda'          => $summaryDenda,
-            'periode'        => $periode,
-            'list_transaksi' => $transaksiData,
-            'list_denda'     => $dendaData,
+            'periode'   => $summary['periode'],
+            'transaksi' => $summary['transaksi'],
+            'denda'     => $summary['denda'],
         ]);
 
         return $pdf->download('laporan-summary.pdf');
@@ -227,6 +240,7 @@ class LaporanController extends Controller
             $dari   = now()->startOfMonth();
             $sampai = now()->endOfMonth();
         }
+
         return [$dari, $sampai];
     }
 }

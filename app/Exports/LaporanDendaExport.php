@@ -16,35 +16,45 @@ class LaporanDendaExport implements FromCollection, WithHeadings, WithStyles, Wi
 
     public function __construct($dari, $sampai, $status = null)
     {
-        $this->dari = $dari;
+        $this->dari   = $dari;
         $this->sampai = $sampai;
         $this->status = $status;
     }
 
     public function collection()
     {
-        $query = Denda::with(['transaksi.user', 'transaksi.buku'])
-            ->whereBetween('created_at', [$this->dari, $this->sampai]);
+        $query = Denda::with([
+            'transaksiDetail.transaksi.user',
+            'transaksiDetail.buku'
+        ])
+        ->whereBetween('created_at', [$this->dari, $this->sampai]);
 
-        if ($this->status) $query->where('status_pembayaran', $this->status);
+        if ($this->status) {
+            $query->where('status_pembayaran', $this->status);
+        }
 
         return $query->get()->map(function ($d, $index) {
+            $trx = $d->transaksiDetail?->transaksi;
+
             return [
-                'No'               => $index + 1,
-                'User'             => $d->transaksi->user->name,
-                'Buku'             => $d->transaksi->buku->judul,
-                'Nominal'          => 'Rp ' . number_format($d->nominal, 0, ',', '.'),
-                'Status Pembayaran'=> ucfirst($d->status_pembayaran),
-                'Tgl Pembayaran'   => $d->tgl_pembayaran
-                    ? \Carbon\Carbon::parse($d->tgl_pembayaran)->format('d M Y')
-                    : '-',
+                'No'                => $index + 1,
+                'User'              => optional($d->transaksiDetail?->transaksi?->user)->name ?? 'User Dihapus',
+                'Buku'              => optional($d->transaksiDetail?->buku)->judul ?? 'Buku Dihapus',
+                'Tgl Pinjam'        => $trx?->tgl_pinjam
+                                        ? \Carbon\Carbon::parse($trx->tgl_pinjam)->format('d M Y') : '-',
+                'Deadline'          => $trx?->tgl_deadline
+                                        ? \Carbon\Carbon::parse($trx->tgl_deadline)->format('d M Y') : '-',
+                'Nominal'           => 'Rp ' . number_format($d->nominal, 0, ',', '.'),
+                'Status Pembayaran' => ucfirst(str_replace('_', ' ', $d->status_pembayaran)),
+                'Tgl Pembayaran'    => $d->tgl_pembayaran
+                                        ? \Carbon\Carbon::parse($d->tgl_pembayaran)->format('d M Y') : '-',
             ];
         });
     }
 
     public function headings(): array
     {
-        return ['No', 'User', 'Buku', 'Nominal', 'Status Pembayaran', 'Tgl Pembayaran'];
+        return ['No', 'User', 'Buku', 'Tgl Pinjam', 'Deadline', 'Nominal', 'Status Pembayaran', 'Tgl Pembayaran'];
     }
 
     public function styles(Worksheet $sheet)
@@ -58,7 +68,7 @@ class LaporanDendaExport implements FromCollection, WithHeadings, WithStyles, Wi
     {
         return [
             AfterSheet::class => function (AfterSheet $event) {
-                $sheet = $event->sheet->getDelegate();
+                $sheet   = $event->sheet->getDelegate();
                 $lastRow = $sheet->getHighestRow() + 2;
 
                 $sheet->setCellValue("A{$lastRow}", 'Periode');

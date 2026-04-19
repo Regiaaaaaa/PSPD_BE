@@ -9,6 +9,7 @@ use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use App\Models\Transaksi;
+use Carbon\Carbon;
 
 class LaporanTransaksiExport implements FromCollection, WithHeadings, WithStyles, WithEvents
 {
@@ -16,30 +17,46 @@ class LaporanTransaksiExport implements FromCollection, WithHeadings, WithStyles
 
     public function __construct($dari, $sampai, $status = null)
     {
-        $this->dari = $dari;
+        $this->dari   = $dari;
         $this->sampai = $sampai;
         $this->status = $status;
     }
 
     public function collection()
-{
-    $query = Transaksi::with(['user', 'buku'])
-        ->whereBetween('created_at', [$this->dari, $this->sampai])
-        ->whereIn('status', ['kembali', 'ditolak']); 
-    if ($this->status) $query->where('status', $this->status);
+    {
+        $query = Transaksi::with(['user', 'details.buku'])
+            ->whereBetween('created_at', [$this->dari, $this->sampai])
+            ->whereIn('status', ['dipinjam', 'kembali']);
 
-    return $query->get()->map(function ($t, $index) {
-        return [
-            'No'          => $index + 1,
-            'Peminjam'    => $t->user->name,
-            'Judul Buku'  => $t->buku->judul,
-            'Tgl Pinjam'  => $t->tgl_pinjam ? \Carbon\Carbon::parse($t->tgl_pinjam)->format('d M Y') : '-',
-            'Deadline'    => $t->tgl_deadline ? \Carbon\Carbon::parse($t->tgl_deadline)->format('d M Y') : '-',
-            'Tgl Kembali' => $t->tgl_kembali ? \Carbon\Carbon::parse($t->tgl_kembali)->format('d M Y') : '-',
-            'Status'      => ucfirst($t->status),
-        ];
-    });
-}
+        if ($this->status) {
+            $query->where('status', $this->status);
+        }
+
+        $data = [];
+        $no   = 1;
+
+        foreach ($query->get() as $t) {
+            foreach ($t->details as $dt) {
+                $data[] = [
+                    'No'          => $no++,
+                    'Peminjam'    => optional($t->user)->name ?? 'User Dihapus',
+                    'Judul Buku'  => optional($dt->buku)->judul ?? 'Buku Dihapus',
+                    'Tgl Pinjam'  => $t->tgl_pinjam
+                                        ? Carbon::parse($t->tgl_pinjam)->format('d M Y')
+                                        : '-',
+                    'Deadline'    => $t->tgl_deadline
+                                        ? Carbon::parse($t->tgl_deadline)->format('d M Y')
+                                        : '-',
+                    'Tgl Kembali' => $dt->tgl_kembali  
+                                        ? Carbon::parse($dt->tgl_kembali)->format('d M Y')
+                                        : '-',
+                    'Status'      => ucfirst($t->status),
+                ];
+            }
+        }
+
+        return collect($data);
+    }
 
     public function headings(): array
     {
@@ -57,14 +74,14 @@ class LaporanTransaksiExport implements FromCollection, WithHeadings, WithStyles
     {
         return [
             AfterSheet::class => function (AfterSheet $event) {
-                $sheet = $event->sheet->getDelegate();
+                $sheet   = $event->sheet->getDelegate();
                 $lastRow = $sheet->getHighestRow() + 2;
 
                 $sheet->setCellValue("A{$lastRow}", 'Periode');
                 $sheet->setCellValue("B{$lastRow}",
-                    \Carbon\Carbon::parse($this->dari)->translatedFormat('F Y') .
-                    ' (' . \Carbon\Carbon::parse($this->dari)->format('Y-m-d') .
-                    ' s/d ' . \Carbon\Carbon::parse($this->sampai)->format('Y-m-d') . ')'
+                    Carbon::parse($this->dari)->translatedFormat('F Y') .
+                    ' (' . Carbon::parse($this->dari)->format('Y-m-d') .
+                    ' s/d ' . Carbon::parse($this->sampai)->format('Y-m-d') . ')'
                 );
             }
         ];

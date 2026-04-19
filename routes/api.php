@@ -142,17 +142,12 @@ Route::middleware(['auth:sanctum', 'role:staff,siswa'])->prefix('user')->group(f
     Route::put('/profile', [ProfileController::class, 'updateProfile']);
     Route::post('/profile/change-password', [ProfileController::class, 'changePassword']);
 
-    // Transaksi (Sistem Baru: Keranjang & Multi-book)
-    Route::get('/transaksi', [TransaksiController::class, 'index']); // List riwayat
-    
-    // URL diubah jadi /pinjam dan tanpa parameter {buku} karena kirim array di body
-    Route::post('/transaksi/pinjam', [TransaksiController::class, 'store']); 
-    
-    Route::get('/transaksi/cek-denda', [TransaksiController::class, 'cekDenda']); 
-    Route::get('/transaksi/show/{id}', [TransaksiController::class, 'show']);
-    
-    // Method POST lebih disarankan untuk action cancel
+    // Transaksi
+    Route::get('/transaksi', [TransaksiController::class, 'index']);
+    Route::post('/transaksi/pinjam', [TransaksiController::class, 'store']);
+    Route::get('/transaksi/cek-denda', [TransaksiController::class, 'cekDenda']);
     Route::post('/transaksi/cancel/{id}', [TransaksiController::class, 'cancel']);
+    Route::get('/transaksi/{id}', [TransaksiController::class, 'show']);
 
     // Katalog Buku
     Route::get('/katalog', [KatalogController::class, 'index']);

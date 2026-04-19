@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Operator;
 
 use App\Http\Controllers\Controller;
 use App\Models\Denda;
+use App\Models\DetailTransaksi;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 
@@ -11,25 +12,27 @@ class DendaController extends Controller
 {
     // Daftar Denda
     public function index(Request $request)
-    {
-            $query = Denda::with([
-            'transaksi.buku',
-            'transaksi.user.siswa',
-            'transaksi.user.staff'
-        ])->latest();
+{
+    $query = Denda::with([
+        'transaksiDetail.buku',
+        'transaksiDetail.transaksi.user.siswa',
+        'transaksiDetail.transaksi.user.staff',
+        'operator'
+    ])->latest();
 
-
-        if ($request->filled('status')) {
-            $query->where('status_pembayaran', $request->status);
-        }
-
-        $denda = $query->paginate(20);
-        return response()->json([
-            'success' => true,
-            'data' => $denda
-        ]);
+    if ($request->filled('status')) {
+        $query->where('status_pembayaran', $request->status);
     }
-    
+
+    $denda = $query->paginate(20);
+
+    return response()->json([
+        'success' => true,
+        'data' => $denda
+    ]);
+}
+
+    // Bayar Denda
     public function bayar($id)
     {
         $denda = Denda::findOrFail($id);

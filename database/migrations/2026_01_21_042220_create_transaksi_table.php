@@ -10,31 +10,24 @@ return new class extends Migration {
         Schema::create('transaksi', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
-            $table->foreignId('buku_id')->constrained('buku')->cascadeOnDelete();
+
             $table->text('kepentingan')->nullable();
             $table->text('pesan_ditolak')->nullable();
 
             $table->date('tgl_pinjam')->nullable();
             $table->date('tgl_deadline');
-            $table->date('tgl_kembali')->nullable();
 
-            $table->enum('status', ['menunggu', 'dipinjam', 'kembali', 'ditolak', 'dibatalkan'])
-                ->default('menunggu');
+            $table->enum('status', [
+                'menunggu',
+                'dipinjam',
+                'kembali',
+                'ditolak',
+                'dibatalkan'
+            ])->default('menunggu');
 
-            $table->foreignId('disetujui_oleh')
-                ->nullable()
-                ->constrained('users')
-                ->nullOnDelete();
-
-            $table->foreignId('diterima_oleh')
-                ->nullable()
-                ->constrained('users')
-                ->nullOnDelete();
-
-            $table->foreignId('ditolak_oleh')
-                ->nullable()
-                ->constrained('users')
-                ->nullOnDelete();
+            $table->foreignId('disetujui_oleh')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('diterima_oleh')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('ditolak_oleh')->nullable()->constrained('users')->nullOnDelete();
 
             $table->timestamps();
         });

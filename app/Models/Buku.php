@@ -10,6 +10,7 @@ class Buku extends Model
     use HasFactory;
 
     protected $table = 'buku';
+
     protected $fillable = [
         'isbn', 
         'kategori_id',
@@ -28,9 +29,21 @@ class Buku extends Model
         return $this->belongsTo(Kategori::class);
     }
 
+    public function details()
+    {
+        return $this->hasMany(DetailTransaksi::class, 'buku_id');
+    }
+
     public function transaksi()
     {
-        return $this->hasMany(Transaksi::class);
+        return $this->hasManyThrough(
+            Transaksi::class,
+            DetailTransaksi::class,
+            'buku_id',
+            'id',
+            'id',
+            'transaksi_id'
+        );
     }
 }
 
