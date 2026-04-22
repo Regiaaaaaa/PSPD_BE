@@ -15,7 +15,6 @@ use Illuminate\Support\Facades\DB;
 
 class TransaksiController extends Controller
 {
-    // List Riwayat Peminjaman User
     public function index()
     {
         $transaksi = Transaksi::with([
@@ -32,7 +31,6 @@ class TransaksiController extends Controller
         ]);
     }
 
-    // Cek Denda Belum Lunas
     private function getDendaAktif(int $userId): ?Denda
     {
         return Denda::with('transaksiDetail.buku')
@@ -43,7 +41,6 @@ class TransaksiController extends Controller
             ->first();
     }
 
-    // Pinjam Buku
     public function store(Request $request)
     {
         $userId = Auth::id();
@@ -54,8 +51,6 @@ class TransaksiController extends Controller
             'tgl_deadline' => 'required|date|after_or_equal:today',
             'kepentingan' => 'nullable|string'
         ]);
-
-        // Cek pinjaman aktif
         $masihAdaPinjaman = Transaksi::where('user_id', $userId)
             ->whereIn('status', ['dipinjam', 'menunggu'])
             ->exists();
@@ -66,8 +61,6 @@ class TransaksiController extends Controller
                 'message' => 'Masih ada buku yang belum dikembalikan.'
             ], 422);
         }
-
-        // Cek buku telat
         $adaBukuTelat = Transaksi::where('user_id', $userId)
             ->where('status', 'dipinjam')
             ->where('tgl_deadline', '<', now())
@@ -86,8 +79,6 @@ class TransaksiController extends Controller
         DB::beginTransaction();
 
         try {
-
-            // Buat transaksi utama
             $transaksi = Transaksi::create([
                 'user_id' => $userId,
                 'kepentingan' => $request->kepentingan,
@@ -115,8 +106,6 @@ class TransaksiController extends Controller
 
                 $buku->decrement('stok_tersedia');
             }
-
-            // Notifikasi Operator
             $operators = User::where('role', 'operator')->get();
 
             $transaksi->load('details.buku', 'user');
@@ -144,7 +133,6 @@ class TransaksiController extends Controller
         }
     }
 
-    // Detail Transaksi
     public function show($id)
     {
         $transaksi = Transaksi::with([
@@ -164,54 +152,47 @@ class TransaksiController extends Controller
         ]);
     }
 
-    // Batalkan
-    // Batalkan
-public function cancel($id)
-{
-    $transaksi = Transaksi::where('user_id', Auth::id())
-        ->where('status', 'menunggu')
-        ->with('details')
-        ->findOrFail($id);
+    public function cancel($id)
+    {
+        $transaksi = Transaksi::where('user_id', Auth::id())
+            ->where('status', 'menunggu')
+            ->with('details')
+            ->findOrFail($id);
 
-    DB::beginTransaction();
+        DB::beginTransaction();
 
-    try {
+        try {
 
-        $transaksi->update([
-            'status' => 'dibatalkan'
-        ]);
-
-        foreach ($transaksi->details as $detail) {
-
-            // Update status detail
-            $detail->update([
+            $transaksi->update([
                 'status' => 'dibatalkan'
             ]);
 
-            // Kembalikan stok buku
-            Buku::where('id', $detail->buku_id)
-                ->increment('stok_tersedia');
+            foreach ($transaksi->details as $detail) {
+                $detail->update([
+                    'status' => 'dibatalkan'
+                ]);
+                Buku::where('id', $detail->buku_id)
+                    ->increment('stok_tersedia');
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Pengajuan dibatalkan'
+            ]);
+
+        } catch (\Exception $e) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal membatalkan'
+            ], 400);
         }
-
-        DB::commit();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Pengajuan dibatalkan'
-        ]);
-
-    } catch (\Exception $e) {
-
-        DB::rollBack();
-
-        return response()->json([
-            'success' => false,
-            'message' => 'Gagal membatalkan'
-        ], 400);
     }
-}
-
-    // Cek Denda
+ 
     public function cekDenda()
     {
         $userId = Auth::id();
@@ -227,7 +208,6 @@ public function cancel($id)
             })
             ->first();
 
-        // Denda tercatat
         if ($denda) {
 
             $judul = null;
@@ -247,7 +227,6 @@ public function cancel($id)
             ]);
         }
 
-        // Buku telat
         if ($transaksiTelat) {
 
             $judul = null;

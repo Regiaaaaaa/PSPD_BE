@@ -16,15 +16,15 @@ class MonitoringBukuController extends Controller
             ->map(function ($item) {
                 return [
                     'id' => $item->id,
-                    'isbn' => $item->isbn, 
+                    'isbn' => $item->isbn,
                     'judul' => $item->judul,
                     'penulis' => $item->penulis,
                     'penerbit' => $item->penerbit,
                     'tahun_terbit' => $item->tahun_terbit,
-                    'kategori' => [
-                        'id' => $item->kategori->id ?? null,
-                        'nama' => $item->kategori->nama_kategori ?? null,
-                    ],
+                    'kategori' => $item->kategori->map(fn($k) => [  // ← array sekarang
+                        'id' => $k->id,
+                        'nama' => $k->nama_kategori,
+                    ])->toArray(),
                     'stok_total' => $item->stok_total,
                     'stok_tersedia' => $item->stok_tersedia,
                     'dalam_perbaikan' => $item->dalam_perbaikan,

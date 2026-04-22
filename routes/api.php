@@ -84,6 +84,8 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
         // Kelola Buku
         Route::get('/books', [BookController::class, 'index']);
         Route::post('/books', [BookController::class, 'store']);
+        Route::get('/books/download-template', [BookController::class, 'downloadTemplate']);
+        Route::post('/books/import', [BookController::class, 'import']);
         Route::get('/books/{id}', [BookController::class, 'show']);
         Route::put('/books/{id}', [BookController::class, 'update']);
         Route::delete('/books/{id}', [BookController::class, 'destroy']);

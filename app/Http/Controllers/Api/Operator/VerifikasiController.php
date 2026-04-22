@@ -27,8 +27,13 @@ class VerifikasiController extends Controller
     }
 
     // Approve Peminjaman
-    public function approve($id)
+    public function approve(Request $request, $id)
     {
+        $request->validate([
+            'tgl_deadline' => 'nullable|date',
+            'pesan_diterima' => 'nullable|string|max:255'
+        ]);
+
         $transaksi = Transaksi::with(['details.buku', 'user'])->findOrFail($id);
 
         if ($transaksi->status !== 'menunggu') {
@@ -42,14 +47,19 @@ class VerifikasiController extends Controller
 
         try {
 
-            // Update transaksi
-            $transaksi->update([
+            // Prepare update data
+            $updateData = [
                 'status' => 'dipinjam',
                 'tgl_pinjam' => now(),
                 'disetujui_oleh' => Auth::id(),
-            ]);
-
-            // Update detail transaksi
+            ];
+            if ($request->filled('tgl_deadline')) {
+                $updateData['tgl_deadline'] = $request->tgl_deadline;
+            }
+            if ($request->filled('pesan_diterima')) {
+                $updateData['pesan_diterima'] = $request->pesan_diterima;
+            }
+            $transaksi->update($updateData);
             foreach ($transaksi->details as $detail) {
                 $detail->update([
                     'status' => 'dipinjam'
@@ -98,15 +108,11 @@ class VerifikasiController extends Controller
         DB::beginTransaction();
 
         try {
-
-            // Update transaksi
             $transaksi->update([
                 'status' => 'ditolak',
                 'pesan_ditolak' => $request->pesan_ditolak,
                 'ditolak_oleh' => Auth::id(), 
             ]);
-
-            // Update detail & kembalikan stok
             foreach ($transaksi->details as $detail) {
 
                 $detail->update([

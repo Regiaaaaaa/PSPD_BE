@@ -13,6 +13,7 @@ class Transaksi extends Model
         'user_id',
         'kepentingan',
         'pesan_ditolak',
+        'pesan_diterima',
         'tgl_pinjam',
         'tgl_deadline',
         'status',

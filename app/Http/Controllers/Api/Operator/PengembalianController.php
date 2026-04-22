@@ -13,7 +13,6 @@ use Illuminate\Support\Facades\DB;
 
 class PengembalianController extends Controller
 {
-    // List transaksi yang sedang dipinjam
     public function index()
     {
         $transaksi = Transaksi::with([
@@ -31,8 +30,6 @@ class PengembalianController extends Controller
         ]);
     }
 
-
-    // Terima Pengembalian Per Buku
     public function terima($detailId)
     {
         $detail = DetailTransaksi::with([
@@ -56,8 +53,6 @@ class PengembalianController extends Controller
             $tglSekarang = now();
             Buku::where('id', $detail->buku_id)
                 ->increment('stok_tersedia');
-
-            // Update detail 
             $detail->update([
                 'status' => 'kembali',
                 'tgl_kembali' => $tglSekarang

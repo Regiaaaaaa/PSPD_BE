@@ -13,6 +13,7 @@ return new class extends Migration {
 
             $table->text('kepentingan')->nullable();
             $table->text('pesan_ditolak')->nullable();
+            $table->text('pesan_diterima')->nullable();
 
             $table->date('tgl_pinjam')->nullable();
             $table->date('tgl_deadline');

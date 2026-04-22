@@ -8,10 +8,11 @@ use App\Models\DetailTransaksi;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use App\Imports\BooksImport; 
+use Maatwebsite\Excel\Facades\Excel;
 
 class BookController extends Controller
 {
-    // Daftar Buku
     public function index()
     {
         $buku = Buku::with('kategori')->get();
@@ -22,52 +23,50 @@ class BookController extends Controller
             'data' => $buku
         ]);
     }
-
-    // Tambah Buku
     public function store(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'isbn'          => 'required|digits_between:10,13|unique:buku,isbn',
-            'kategori_id'   => 'required|exists:kategori,id',
-            'judul'         => 'required|string|max:255',
-            'penulis'       => 'nullable|string|max:255',
-            'penerbit'      => 'nullable|string|max:255',
-            'tahun_terbit'  => 'nullable|digits:4',
-            'stok_total'    => 'required|integer|min:0',
-            'cover'         => 'nullable|image|mimes:jpg,jpeg,png|max:2048'
-        ]);
+{
+    $validator = Validator::make($request->all(), [
+        'isbn'          => 'required|digits_between:10,13|unique:buku,isbn',
+        'kategori_id'   => 'required|array',
+        'kategori_id.*' => 'exists:kategori,id',
+        'judul'         => 'required|string|max:255',
+        'penulis'       => 'nullable|string|max:255',
+        'penerbit'      => 'nullable|string|max:255',
+        'tahun_terbit'  => 'nullable|digits:4',
+        'stok_total'    => 'required|integer|min:0',
+        'cover'         => 'nullable|image|mimes:jpg,jpeg,png|max:2048'
+    ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'status' => false,
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        $coverPath = null;
-        if ($request->hasFile('cover')) {
-            $coverPath = $request->file('cover')->store('covers', 'public');
-        }
-
-        $buku = Buku::create([
-            'isbn'             => $request->isbn,
-            'kategori_id'      => $request->kategori_id,
-            'judul'            => $request->judul,
-            'penulis'          => $request->penulis,
-            'penerbit'         => $request->penerbit,
-            'tahun_terbit'     => $request->tahun_terbit,
-            'stok_total'       => $request->stok_total,
-            'stok_tersedia'    => $request->stok_total,
-            'dalam_perbaikan'  => 0,
-            'cover'            => $coverPath
-        ]);
-
+    if ($validator->fails()) {
         return response()->json([
-            'status' => true,
-            'message' => 'Buku berhasil ditambahkan',
-            'data' => $buku
-        ], 201);
+            'status' => false,
+            'errors' => $validator->errors()
+        ], 422);
     }
+
+    $coverPath = null;
+    if ($request->hasFile('cover')) {
+        $coverPath = $request->file('cover')->store('covers', 'public');
+    }
+    $buku = Buku::create([
+        'isbn'             => $request->isbn,
+        'judul'            => $request->judul,
+        'penulis'          => $request->penulis,
+        'penerbit'         => $request->penerbit,
+        'tahun_terbit'     => $request->tahun_terbit,
+        'stok_total'       => $request->stok_total,
+        'stok_tersedia'    => $request->stok_total,
+        'dalam_perbaikan'  => 0,
+        'cover'            => $coverPath
+    ]);
+    $buku->kategori()->sync($request->kategori_id);
+
+    return response()->json([
+        'status' => true,
+        'message' => 'Buku berhasil ditambahkan',
+        'data' => $buku->load('kategori')
+    ], 201);
+}
 
     // Detail Buku
     public function show($id)
@@ -99,7 +98,6 @@ class BookController extends Controller
         ], 404);
     }
 
-    // Hitung buku yang sedang dipinjam dari detail_transaksi
     $dipinjam = DetailTransaksi::where('buku_id', $buku->id)
         ->whereIn('status', ['menunggu', 'dipinjam'])
         ->count();
@@ -109,7 +107,8 @@ class BookController extends Controller
 
     $validator = Validator::make($request->all(), [
         'isbn'            => 'required|digits_between:10,13|unique:buku,isbn,' . $buku->id,
-        'kategori_id'     => 'required|exists:kategori,id',
+        'kategori_id'     => 'required|array',
+        'kategori_id.*'   => 'exists:kategori,id',
         'judul'           => 'required|string|max:255',
         'penulis'         => 'nullable|string|max:255',
         'penerbit'        => 'nullable|string|max:255',
@@ -126,20 +125,17 @@ class BookController extends Controller
         ], 422);
     }
 
-    $stokTotal    = $request->stok_total ?? $buku->stok_total;
+    $stokTotal     = $request->stok_total ?? $buku->stok_total;
     $stokPerbaikan = $request->dalam_perbaikan ?? $buku->dalam_perbaikan;
-
-    // Hitung stok tersedia
-    $stokTersedia = $stokTotal - $stokPerbaikan - $dipinjam;
+    $stokTersedia  = $stokTotal - $stokPerbaikan - $dipinjam;
 
     if ($stokTersedia < 0) {
         return response()->json([
             'status' => false,
-            'message' => 'Stok tidak mencukupi (perbaikan / peminjaman terlalu banyak)'
+            'message' => 'Stok tidak mencukupi'
         ], 422);
     }
 
-    // Upload Cover Baru
     if ($request->hasFile('cover')) {
         if ($buku->cover && Storage::disk('public')->exists($buku->cover)) {
             Storage::disk('public')->delete($buku->cover);
@@ -150,7 +146,6 @@ class BookController extends Controller
 
     $buku->update([
         'isbn'            => $request->isbn,
-        'kategori_id'     => $request->kategori_id,
         'judul'           => $request->judul,
         'penulis'         => $request->penulis,
         'penerbit'        => $request->penerbit,
@@ -160,12 +155,16 @@ class BookController extends Controller
         'dalam_perbaikan' => $stokPerbaikan,
     ]);
 
+    // 🔥 UPDATE PIVOT
+    $buku->kategori()->sync($request->kategori_id);
+
     return response()->json([
         'status' => true,
         'message' => 'Buku berhasil diperbarui',
-        'data'    => $buku
+        'data'    => $buku->load('kategori')
     ]);
 }
+
 
     // Hapus Buku
     public function destroy($id)
@@ -189,5 +188,33 @@ class BookController extends Controller
             'status' => true,
             'message' => 'Buku berhasil dihapus'
         ]);
+    }
+    public function downloadTemplate()
+    {
+        $path = storage_path('app/public/templates/template_buku.xlsx');
+        
+        if (!file_exists($path)) {
+            return response()->json(['status' => false, 'message' => 'Template tidak ditemukan'], 404);
+        }
+
+        return response()->download($path);
+    }
+
+    public function import(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'file' => 'required|mimes:xlsx,xls'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['status' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        try {
+            Excel::import(new BooksImport, $request->file('file'));
+            return response()->json(['status' => true, 'message' => 'Data buku berhasil diimport!'], 200);
+        } catch (\Exception $e) {
+            return response()->json(['status' => false, 'message' => 'Gagal import: ' . $e->getMessage()], 400);
+        }
     }
 }

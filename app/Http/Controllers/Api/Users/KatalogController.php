@@ -13,12 +13,13 @@ class KatalogController extends Controller
     {
         $buku = Buku::with('kategori')
             ->where('stok_tersedia', '>', 0)
+
             ->when($request->search, function ($q) use ($request) {
                 $q->where(function ($sub) use ($request) {
                     $sub->where('judul', 'like', "%{$request->search}%")
                         ->orWhere('penulis', 'like', "%{$request->search}%")
                         ->orWhere('penerbit', 'like', "%{$request->search}%")
-                        ->orWhere('isbn', 'like', "%{$request->search}%"); 
+                        ->orWhere('isbn', 'like', "%{$request->search}%");
                 });
             })
 
@@ -26,9 +27,11 @@ class KatalogController extends Controller
                 $q->where('tahun_terbit', $request->tahun)
             )
 
-            ->when($request->kategori_id, fn ($q) =>
-                $q->where('kategori_id', $request->kategori_id)
-            )
+            ->when($request->kategori_id, function ($q) use ($request) {
+                $q->whereHas('kategori', function ($sub) use ($request) {
+                    $sub->where('kategori.id', $request->kategori_id);
+                });
+            })
 
             ->when(
                 $request->sort === 'terbaru',
@@ -39,21 +42,24 @@ class KatalogController extends Controller
             ->get()
             ->map(function ($b) {
                 return [
-                    'id'             => $b->id,
-                    'isbn'           => $b->isbn, 
-                    'judul'          => $b->judul,
-                    'penulis'        => $b->penulis,
-                    'penerbit'       => $b->penerbit,
-                    'tahun_terbit'   => $b->tahun_terbit,
-                    'stok_tersedia'  => $b->stok_tersedia,
-                    'cover'          => $b->cover,
-                    'kategori'       => $b->kategori,
+                    'id'            => $b->id,
+                    'isbn'          => $b->isbn,
+                    'judul'         => $b->judul,
+                    'penulis'       => $b->penulis,
+                    'penerbit'      => $b->penerbit,
+                    'tahun_terbit'  => $b->tahun_terbit,
+                    'stok_tersedia' => $b->stok_tersedia,
+                    'cover'         => $b->cover,
+                    'kategori'      => $b->kategori->map(fn ($k) => [
+                        'id'            => $k->id,
+                        'nama_kategori' => $k->nama_kategori,
+                    ])->values(),
                 ];
             });
 
         return response()->json([
             'success' => true,
-            'data' => $buku
+            'data'    => $buku,
         ]);
     }
 
@@ -66,15 +72,18 @@ class KatalogController extends Controller
             'success' => true,
             'data' => [
                 'id'            => $buku->id,
-                'isbn'          => $buku->isbn, 
+                'isbn'          => $buku->isbn,
                 'judul'         => $buku->judul,
                 'penulis'       => $buku->penulis,
                 'penerbit'      => $buku->penerbit,
                 'tahun_terbit'  => $buku->tahun_terbit,
                 'stok_tersedia' => $buku->stok_tersedia,
                 'cover'         => $buku->cover,
-                'kategori'      => $buku->kategori,
-            ]
+                'kategori'      => $buku->kategori->map(fn ($k) => [
+                    'id'            => $k->id,
+                    'nama_kategori' => $k->nama_kategori,
+                ])->values(),
+            ],
         ]);
     }
 }

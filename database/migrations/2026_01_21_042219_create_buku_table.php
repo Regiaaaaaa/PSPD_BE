@@ -10,7 +10,6 @@ return new class extends Migration {
         Schema::create('buku', function (Blueprint $table) {
             $table->id();
             $table->string('isbn', 13)->unique();
-            $table->foreignId('kategori_id')->constrained('kategori')->cascadeOnDelete();
             $table->string('judul');
             $table->string('penulis')->nullable();
             $table->string('penerbit')->nullable();
