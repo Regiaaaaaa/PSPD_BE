@@ -8,7 +8,7 @@ use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
-use App\Models\Denda;
+use App\Models\DetailTransaksi;
 
 class LaporanDendaExport implements FromCollection, WithHeadings, WithStyles, WithEvents
 {
@@ -23,38 +23,40 @@ class LaporanDendaExport implements FromCollection, WithHeadings, WithStyles, Wi
 
     public function collection()
     {
-        $query = Denda::with([
-            'transaksiDetail.transaksi.user',
-            'transaksiDetail.buku'
-        ])
-        ->whereBetween('created_at', [$this->dari, $this->sampai]);
+        $query = DetailTransaksi::with(['buku', 'transaksi.user'])
+            ->where('total_denda_item', '>', 0)
+            ->whereHas('transaksi', function ($q) {
+                $q->whereBetween('created_at', [$this->dari, $this->sampai]);
+            });
 
         if ($this->status) {
-            $query->where('status_pembayaran', $this->status);
+            $query->whereHas('transaksi', function ($q) {
+                $q->where('status_denda', $this->status);
+            });
         }
 
-        return $query->get()->map(function ($d, $index) {
-            $trx = $d->transaksiDetail?->transaksi;
-
+        return $query->orderBy('created_at', 'desc')->get()->map(function ($dt, $index) {
             return [
-                'No'                => $index + 1,
-                'User'              => optional($d->transaksiDetail?->transaksi?->user)->name ?? 'User Dihapus',
-                'Buku'              => optional($d->transaksiDetail?->buku)->judul ?? 'Buku Dihapus',
-                'Tgl Pinjam'        => $trx?->tgl_pinjam
-                                        ? \Carbon\Carbon::parse($trx->tgl_pinjam)->format('d M Y') : '-',
-                'Deadline'          => $trx?->tgl_deadline
-                                        ? \Carbon\Carbon::parse($trx->tgl_deadline)->format('d M Y') : '-',
-                'Nominal'           => 'Rp ' . number_format($d->nominal, 0, ',', '.'),
-                'Status Pembayaran' => ucfirst(str_replace('_', ' ', $d->status_pembayaran)),
-                'Tgl Pembayaran'    => $d->tgl_pembayaran
-                                        ? \Carbon\Carbon::parse($d->tgl_pembayaran)->format('d M Y') : '-',
+                'No'               => $index + 1,
+                'Peminjam'         => optional($dt->transaksi?->user)->name ?? 'User Dihapus',
+                'Buku'             => optional($dt->buku)->judul ?? 'Buku Dihapus',
+                'Kondisi'          => ucfirst(str_replace('_', ' ', $dt->status ?? '-')),
+                'Denda Telat'      => 'Rp ' . number_format($dt->denda_telat ?? 0, 0, ',', '.'),
+                'Denda Kerusakan'  => 'Rp ' . number_format($dt->denda_kerusakan ?? 0, 0, ',', '.'),
+                'Denda Hilang'     => 'Rp ' . number_format($dt->denda_hilang ?? 0, 0, ',', '.'),
+                'Total Denda'      => 'Rp ' . number_format($dt->total_denda_item ?? 0, 0, ',', '.'),
+                'Tgl Kembali'      => $dt->tgl_kembali
+                                        ? \Carbon\Carbon::parse($dt->tgl_kembali)->format('d M Y') : '-',
+                'Status'           => $dt->transaksi?->status_denda === 'lunas' ? 'Lunas' : 'Belum Lunas',
+                'Lunas Pada'       => $dt->transaksi?->tgl_lunas
+                                        ? \Carbon\Carbon::parse($dt->transaksi->tgl_lunas)->format('d M Y') : '-',
             ];
         });
     }
 
     public function headings(): array
     {
-        return ['No', 'User', 'Buku', 'Tgl Pinjam', 'Deadline', 'Nominal', 'Status Pembayaran', 'Tgl Pembayaran'];
+        return ['No', 'Peminjam', 'Buku', 'Kondisi', 'Denda Telat', 'Denda Kerusakan', 'Denda Hilang', 'Total Denda', 'Tgl Kembali', 'Status', 'Lunas Pada'];
     }
 
     public function styles(Worksheet $sheet)

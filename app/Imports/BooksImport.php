@@ -22,6 +22,7 @@ class BooksImport implements ToModel, WithValidation, SkipsEmptyRows, WithHeadin
             'stok_total'      => $row['stok'],
             'stok_tersedia'   => $row['stok'],
             'dalam_perbaikan' => 0,
+            'harga_buku'      => $row['harga_buku'] ?? 0,  
         ]);
 
         if (!empty($row['kategori'])) {
@@ -36,10 +37,11 @@ class BooksImport implements ToModel, WithValidation, SkipsEmptyRows, WithHeadin
     public function rules(): array
     {
         return [
-            'isbn'     => 'required|digits_between:10,13|unique:buku,isbn',
-            'judul'    => 'required|string|max:255',
-            'stok'     => 'required|integer|min:0',
-            'kategori' => 'required',
+            'isbn'      => 'required|digits_between:10,13|unique:buku,isbn',
+            'judul'     => 'required|string|max:255',
+            'stok'      => 'required|integer|min:0',
+            'kategori'  => 'required',
+            'harga_buku' => 'nullable|numeric|min:0',  
         ];
     }
-}
+    }

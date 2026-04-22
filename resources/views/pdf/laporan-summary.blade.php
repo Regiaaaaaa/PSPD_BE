@@ -5,10 +5,11 @@
     <title>Laporan Summary</title>
     <style>
         body { font-family: DejaVu Sans, sans-serif; font-size: 12px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 16px; }
         th, td { border: 1px solid #000; padding: 6px; text-align: left; }
         th { background-color: #f2f2f2; }
-        h2, h4 { margin: 0; padding: 0; }
+        h2 { margin: 0 0 4px 0; padding: 0; }
+        h4 { margin: 12px 0 4px 0; padding: 0; }
     </style>
 </head>
 <body>
@@ -19,15 +20,21 @@
     <table>
         <thead>
             <tr>
-                <th>Total Transaksi</th>
-                <th>Status Dipinjam</th>
-                <th>Status Kembali</th>
+                <th>Keterangan</th>
+                <th>Jumlah</th>
             </tr>
         </thead>
         <tbody>
             <tr>
+                <td>Total Transaksi</td>
                 <td>{{ $transaksi['total'] }}</td>
+            </tr>
+            <tr>
+                <td>Status Dipinjam</td>
                 <td>{{ $transaksi['dipinjam'] }}</td>
+            </tr>
+            <tr>
+                <td>Status Kembali</td>
                 <td>{{ $transaksi['kembali'] }}</td>
             </tr>
         </tbody>
@@ -37,16 +44,26 @@
     <table>
         <thead>
             <tr>
-                <th>Total Nominal</th>
-                <th>Lunas</th>
-                <th>Belum Lunas</th>
+                <th>Keterangan</th>
+                <th>Jumlah</th>
+                <th>Total Nominal (Rp)</th>
             </tr>
         </thead>
         <tbody>
             <tr>
-                <td>{{ number_format($denda['total_nominal'], 0, ',', '.') }}</td>
+                <td>Total Denda</td>
+                <td>{{ $denda['lunas'] + $denda['belum_lunas'] }}</td>
+                <td>Rp {{ number_format($denda['total_nominal'], 0, ',', '.') }}</td>
+            </tr>
+            <tr>
+                <td>Denda Lunas</td>
                 <td>{{ $denda['lunas'] }}</td>
+                <td>Rp {{ number_format($denda['nominal_lunas'], 0, ',', '.') }}</td>
+            </tr>
+            <tr>
+                <td>Denda Belum Lunas</td>
                 <td>{{ $denda['belum_lunas'] }}</td>
+                <td>Rp {{ number_format($denda['nominal_belum_lunas'], 0, ',', '.') }}</td>
             </tr>
         </tbody>
     </table>

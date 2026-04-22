@@ -10,16 +10,20 @@ class Transaksi extends Model
     protected $table = 'transaksi';
 
     protected $fillable = [
-        'user_id',
-        'kepentingan',
-        'pesan_ditolak',
-        'pesan_diterima',
-        'tgl_pinjam',
-        'tgl_deadline',
-        'status',
-        'disetujui_oleh',
-        'diterima_oleh',
-        'ditolak_oleh'
+        'user_id', 
+        'kepentingan', 
+        'pesan_ditolak', 
+        'pesan_diterima', 
+        'tgl_pinjam', 
+        'tgl_deadline', 
+        'status', 
+        'disetujui_oleh', 
+        'diterima_oleh', 
+        'ditolak_oleh', 
+        'total_denda', 
+        'status_denda', 
+        'penerima_denda_id', 
+        'tgl_lunas' 
     ];
 
     protected $appends = ['denda_berjalan'];
@@ -49,13 +53,14 @@ class Transaksi extends Model
         return $this->belongsTo(User::class, 'ditolak_oleh');
     }
 
-    // Denda Berjalan
+    public function penerimaDenda()
+    {
+        return $this->belongsTo(User::class, 'penerima_denda_id');
+    }
+
     public function getDendaBerjalanAttribute()
     {
-        if ($this->status !== 'dipinjam') {
-            return 0;
-        }
-        if (now()->lte($this->tgl_deadline)) {
+        if ($this->status !== 'dipinjam' || now()->lte(Carbon::parse($this->tgl_deadline))) {
             return 0;
         }
         $jumlahBuku = $this->details()
@@ -65,7 +70,7 @@ class Transaksi extends Model
         if ($jumlahBuku == 0) {
             return 0;
         }
-        $hariTelat = now()->diffInDays($this->tgl_deadline);
+        $hariTelat = now()->diffInDays(Carbon::parse($this->tgl_deadline));
         return $hariTelat * 1000 * $jumlahBuku;
     }
 }

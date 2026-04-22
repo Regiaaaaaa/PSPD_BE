@@ -5,8 +5,8 @@ namespace App\Http\Controllers\Api\Operator;
 use App\Http\Controllers\Controller;
 use App\Models\Transaksi;
 use App\Models\DetailTransaksi;
-use App\Models\Denda;
 use App\Models\Buku;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -16,9 +16,9 @@ class PengembalianController extends Controller
     public function index()
     {
         $transaksi = Transaksi::with([
-            'details.buku',
             'user.siswa',
-            'user.staff'
+            'user.staff',
+            'details.buku',
         ])
         ->where('status', 'dipinjam')
         ->latest()
@@ -26,90 +26,88 @@ class PengembalianController extends Controller
 
         return response()->json([
             'success' => true,
+            'message' => 'Daftar peminjaman aktif',
             'data' => $transaksi
         ]);
     }
 
-    public function terima($detailId)
+    public function terima(Request $request, $detailId)
     {
-        $detail = DetailTransaksi::with([
-            'transaksi',
-            'buku'
-        ])->findOrFail($detailId);
+        $request->validate([
+            'status' => 'required|in:kembali_normal,kembali_rusak_ringan,kembali_rusak_sedang,kembali_rusak_berat,hilang',
+        ]);
 
+        $detail = DetailTransaksi::with(['transaksi', 'buku'])->findOrFail($detailId);
+        $buku = $detail->buku;
+        $transaksi = $detail->transaksi;
 
         if ($detail->status !== 'dipinjam') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Buku tidak sedang dipinjam'
-            ], 422);
+            return response()->json(['success' => false, 'message' => 'Buku tidak sedang dipinjam'], 422);
         }
 
         DB::beginTransaction();
-
         try {
+            $tglSekarang = Carbon::now();
+            $tglDeadline = Carbon::parse($transaksi->tgl_deadline);
 
-            $transaksi = $detail->transaksi;
-            $tglSekarang = now();
-            Buku::where('id', $detail->buku_id)
-                ->increment('stok_tersedia');
-            $detail->update([
-                'status' => 'kembali',
-                'tgl_kembali' => $tglSekarang
-            ]);
-            $semuaKembali = $transaksi->details()
-                ->where('status', 'dipinjam')
-                ->count() == 0;
-
-            if ($semuaKembali) {
-                $transaksi->update([
-                    'status' => 'kembali',
-                    'diterima_oleh' => Auth::id(),
-                ]);
+            $dendaTelat = 0;
+            if ($tglSekarang->gt($tglDeadline)) {
+                $selisihHari = $tglSekarang->diffInDays($tglDeadline);
+                $dendaTelat = $selisihHari * 1000;
             }
 
-            $tglDeadline = Carbon::parse($transaksi->tgl_deadline)->startOfDay();
-            $tglKembali  = Carbon::parse($tglSekarang)->startOfDay();
+            $persen = 0;
+            switch ($request->status) {
+                case 'kembali_rusak_ringan': $persen = $buku->persen_rusak_ringan / 100; break;
+                case 'kembali_rusak_sedang': $persen = $buku->persen_rusak_sedang / 100; break;
+                case 'kembali_rusak_berat':  $persen = $buku->persen_rusak_berat / 100; break;
+                case 'hilang':               $persen = 1.00; break;
+            }
 
-            $message = 'Buku berhasil dikembalikan';
+            $dendaKerusakan = $buku->harga_buku * $persen;
+            $dendaHilang = ($request->status === 'hilang') ? $dendaKerusakan : 0;
+            $totalItem = $dendaTelat + $dendaKerusakan;
 
-            if ($tglKembali->greaterThan($tglDeadline)) {
+            $detail->update([
+                'status'          => $request->status,
+                'denda_telat'     => $dendaTelat,
+                'denda_kerusakan' => ($request->status !== 'hilang') ? $dendaKerusakan : 0,
+                'denda_hilang'    => $dendaHilang,
+                'total_denda_item'=> $totalItem,
+                'tgl_kembali'     => $tglSekarang,
+            ]);
 
-                $selisihHari = $tglKembali->diffInDays($tglDeadline);
-                $nominal = $selisihHari * 1000;
+            if ($request->status === 'kembali_normal') {
+                $buku->increment('stok_tersedia');
+            } elseif (in_array($request->status, ['kembali_rusak_ringan', 'kembali_rusak_sedang', 'kembali_rusak_berat'])) {
+                $buku->increment('dalam_perbaikan');
+            } elseif ($request->status === 'hilang') {
+                $buku->decrement('stok_total');
+            }
 
-                Denda::updateOrCreate(
-                    [
-                        'detail_transaksi_id' => $detail->id
-                    ],
-                    [
-                        'nominal' => $nominal,
-                        'status_pembayaran' => 'belum_lunas'
-                    ]
-                );
+            $transaksi->increment('total_denda', $totalItem);
 
-                $message .= ', terlambat '
-                    . $selisihHari
-                    . ' hari, denda Rp '
-                    . number_format($nominal);
+            $sisaDipinjam = $transaksi->details()->where('status', 'dipinjam')->count();
+
+            if ($sisaDipinjam == 0) {
+                $transaksi->refresh();
+                $transaksi->update([
+                    'status'       => 'kembali',
+                    'diterima_oleh'=> Auth::id(),
+                    'status_denda' => $transaksi->total_denda > 0 ? 'belum_bayar' : null,
+                ]);
+            } else {
+                if ($totalItem > 0) {
+                    $transaksi->update(['status_denda' => 'belum_bayar']);
+                }
             }
 
             DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'message' => $message,
-                'data' => $detail
-            ]);
+            return response()->json(['success' => true, 'message' => 'Pengembalian diproses, status buku: ' . $request->status]);
 
         } catch (\Exception $e) {
-
             DB::rollBack();
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal memproses pengembalian: ' . $e->getMessage()
-            ], 500);
+            return response()->json(['success' => false, 'message' => 'Gagal: ' . $e->getMessage()], 500);
         }
     }
 }

@@ -34,6 +34,7 @@ class BookController extends Controller
         'penerbit'      => 'nullable|string|max:255',
         'tahun_terbit'  => 'nullable|digits:4',
         'stok_total'    => 'required|integer|min:0',
+        'harga_buku'    => 'nullable|numeric|min:0',
         'cover'         => 'nullable|image|mimes:jpg,jpeg,png|max:2048'
     ]);
 
@@ -57,6 +58,7 @@ class BookController extends Controller
         'stok_total'       => $request->stok_total,
         'stok_tersedia'    => $request->stok_total,
         'dalam_perbaikan'  => 0,
+        'harga_buku'      => $request->harga_buku ?? 0,
         'cover'            => $coverPath
     ]);
     $buku->kategori()->sync($request->kategori_id);
@@ -115,6 +117,7 @@ class BookController extends Controller
         'tahun_terbit'    => 'nullable|digits:4',
         'stok_total'      => 'sometimes|integer|min:' . $minStok,
         'dalam_perbaikan' => 'sometimes|integer|min:0',
+        'harga_buku'      => 'nullable|numeric|min:0', 
         'cover'           => 'nullable|image|mimes:jpg,jpeg,png|max:2048'
     ]);
 
@@ -153,6 +156,7 @@ class BookController extends Controller
         'stok_total'      => $stokTotal,
         'stok_tersedia'   => $stokTersedia,
         'dalam_perbaikan' => $stokPerbaikan,
+        'harga_buku'      => $request->harga_buku ?? $buku->harga_buku,
     ]);
 
     // 🔥 UPDATE PIVOT

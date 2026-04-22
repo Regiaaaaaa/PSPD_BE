@@ -19,7 +19,11 @@ class Buku extends Model
         'tahun_terbit',
         'stok_total',
         'stok_tersedia',   
-        'dalam_perbaikan', 
+        'dalam_perbaikan',
+        'harga_buku',
+        'persen_rusak_ringan',
+        'persen_rusak_sedang',
+        'persen_rusak_berat',
         'cover',
     ];
 

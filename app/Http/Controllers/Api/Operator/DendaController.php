@@ -3,57 +3,62 @@
 namespace App\Http\Controllers\Api\Operator;
 
 use App\Http\Controllers\Controller;
-use App\Models\Denda;
-use App\Models\DetailTransaksi;
+use App\Models\Transaksi;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 
 class DendaController extends Controller
 {
-    // Daftar Denda
     public function index(Request $request)
-{
-    $query = Denda::with([
-        'transaksiDetail.buku',
-        'transaksiDetail.transaksi.user.siswa',
-        'transaksiDetail.transaksi.user.staff',
-        'operator'
-    ])->latest();
-
-    if ($request->filled('status')) {
-        $query->where('status_pembayaran', $request->status);
-    }
-
-    $denda = $query->paginate(20);
-
-    return response()->json([
-        'success' => true,
-        'data' => $denda
-    ]);
-}
-
-    // Bayar Denda
-    public function bayar($id)
     {
-        $denda = Denda::findOrFail($id);
+        $query = Transaksi::with(['user.siswa', 'user.staff', 'details.buku'])
+            ->where('total_denda', '>', 0);
 
-        if ($denda->status_pembayaran === 'lunas') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Denda sudah dibayar'
-            ], 422);
+        if ($request->filled('status')) {
+            $query->where('status_denda', $request->status);
+        } else {
+            $query->where('status_denda', 'belum_bayar');
         }
 
-        $denda->update([
-            'status_pembayaran' => 'lunas',
-            'tgl_pembayaran' => now(),
-            'operator_id' => Auth::id(),
-        ]);
+        $transaksi = $query->latest()->paginate(20);
 
         return response()->json([
             'success' => true,
-            'message' => 'Denda berhasil dibayar',
-            'data' => $denda
+            'message' => 'Data denda berhasil dimuat.',
+            'data' => $transaksi
         ]);
+    }
+    public function bayar($id)
+    {
+        $transaksi = Transaksi::with('details')->findOrFail($id);
+
+        if ($transaksi->status_denda === 'lunas') {
+            return response()->json([
+                'success' => false, 
+                'message' => 'Denda sudah lunas sebelumnya.'
+            ], 422);
+        }
+
+        DB::beginTransaction();
+        try {
+            $transaksi->update([
+                'status_denda' => 'lunas',
+                'tgl_lunas' => now(),
+                'penerima_denda_id' => Auth::id(), 
+            ]);
+
+            DB::commit();
+            return response()->json([
+                'success' => true,
+                'message' => 'Pembayaran denda berhasil diverifikasi.',
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false, 
+                'message' => 'Gagal memproses pembayaran: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }
