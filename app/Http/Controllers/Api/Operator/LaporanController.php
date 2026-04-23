@@ -28,27 +28,33 @@ class LaporanController extends Controller
             $query->where('status', $request->status);
         }
 
-        $data = $query->orderBy('created_at', 'desc')->get()->map(function ($trx) {
-            return [
-                'id'           => $trx->id,
-                'nama_user'    => optional($trx->user)->name ?? 'User Dihapus',
-                'status'       => $trx->status,
-                'tgl_pinjam'   => $trx->tgl_pinjam,
-                'tgl_deadline' => $trx->tgl_deadline,
-                'buku'         => $trx->details->map(function ($dt) {
-                    return [
-                        'id'          => optional($dt->buku)->id,
-                        'judul'       => optional($dt->buku)->judul ?? 'Buku Dihapus',
-                        'tgl_kembali' => $dt->tgl_kembali,
-                        'status'      => $dt->status,
-                    ];
-                }),
-                'tgl_kembali' => $trx->details->whereNotNull('tgl_kembali')->first()?->tgl_kembali,
-                'total_buku'  => $trx->details->count(),
-            ];
-        });
+        $data = $query->orderBy('created_at', 'desc')
+            ->get()
+            ->flatMap(function ($trx) {
 
-        return response()->json(['message' => 'Laporan transaksi', 'data' => $data]);
+                $total = $trx->details->count();
+
+                return $trx->details->map(function ($dt, $i) use ($trx, $total) {
+                    return [
+                        'id' => $trx->id,
+                        'nama_user' => optional($trx->user)->name ?? 'User Dihapus',
+                        'status_transaksi' => $i == 0 ? $trx->status : null,
+                        'rowspan' => $i == 0 ? $total : 0,
+
+                        'judul_buku' => optional($dt->buku)->judul ?? 'Buku Dihapus',
+                        'status_detail' => $dt->status,
+
+                        'tgl_pinjam' => $trx->tgl_pinjam,
+                        'tgl_deadline' => $trx->tgl_deadline,
+                        'tgl_kembali' => $dt->tgl_kembali,
+                    ];
+                });
+            });
+
+        return response()->json([
+            'message' => 'Laporan transaksi',
+            'data' => $data
+        ]);
     }
 
     public function exportTransaksiExcel(Request $request)
@@ -72,10 +78,31 @@ class LaporanController extends Controller
             ->whereBetween('created_at', [$dari, $sampai])
             ->whereIn('status', ['dipinjam', 'kembali']);
 
-        if ($status) $query->where('status', $status);
+        if ($status) {
+            $query->where('status', $status);
+        }
+
+        $data = $query->get()->flatMap(function ($trx) {
+
+            $total = $trx->details->count();
+
+            return $trx->details->map(function ($dt, $i) use ($trx, $total) {
+                return [
+                    'nama_user' => optional($trx->user)->name ?? 'User Dihapus',
+                    'status_transaksi' => $i == 0 ? $trx->status : null,
+                    'rowspan' => $i == 0 ? $total : 0,
+
+                    'judul_buku' => optional($dt->buku)->judul ?? 'Buku Dihapus',
+                    'status_detail' => $dt->status,
+                    'tgl_pinjam' => $trx->tgl_pinjam,
+                    'tgl_deadline' => $trx->tgl_deadline,
+                    'tgl_kembali' => $dt->tgl_kembali,
+                ];
+            });
+        });
 
         $pdf = Pdf::loadView('pdf.laporan-transaksi', [
-            'data'    => $query->get(),
+            'data'    => $data,
             'summary' => $summary,
             'periode' => $summary['periode'],
         ]);

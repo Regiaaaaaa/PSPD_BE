@@ -35,23 +35,43 @@
             <th>Tgl Pinjam</th>
             <th>Deadline</th>
             <th>Tgl Kembali</th>
-            <th>Status</th>
+            <th>Status Transaksi</th>
+            <th>Status Detail</th>
         </tr>
     </thead>
     <tbody>
         @php $no = 1; @endphp
-        @foreach ($data as $t)
-            @foreach ($t->details as $dt)
-                <tr>
-                    <td>{{ $no++ }}</td>
-                    <td>{{ optional($t->user)->name ?? 'User Dihapus' }}</td>
-                    <td>{{ optional($dt->buku)->judul ?? 'Buku Dihapus' }}</td>
-                    <td>{{ $t->tgl_pinjam ? \Carbon\Carbon::parse($t->tgl_pinjam)->format('d M Y') : '-' }}</td>
-                    <td>{{ $t->tgl_deadline ? \Carbon\Carbon::parse($t->tgl_deadline)->format('d M Y') : '-' }}</td>
-                    <td>{{ $dt->tgl_kembali ? \Carbon\Carbon::parse($dt->tgl_kembali)->format('d M Y') : '-' }}</td>
-                    <td>{{ ucfirst($t->status) }}</td>
-                </tr>
-            @endforeach
+        @foreach ($data as $row)
+            <tr>
+                <td>{{ $no++ }}</td>
+                <td>{{ $row['nama_user'] }}</td>
+                <td>{{ $row['judul_buku'] }}</td>
+
+                <td>
+                    {{ $row['tgl_pinjam'] 
+                        ? \Carbon\Carbon::parse($row['tgl_pinjam'])->format('d M Y') 
+                        : '-' }}
+                </td>
+
+                <td>
+                    {{ $row['tgl_deadline'] 
+                        ? \Carbon\Carbon::parse($row['tgl_deadline'])->format('d M Y') 
+                        : '-' }}
+                </td>
+
+                <td>
+                    {{ $row['tgl_kembali'] 
+                        ? \Carbon\Carbon::parse($row['tgl_kembali'])->format('d M Y') 
+                        : '-' }}
+                </td>
+                @if ($row['status_transaksi'])
+                    <td rowspan="{{ $row['rowspan'] }}">
+                        {{ ucfirst($row['status_transaksi']) }}
+                    </td>
+                @endif
+
+                <td>{{ ucfirst(str_replace('_', ' ', $row['status_detail'])) }}</td>
+            </tr>
         @endforeach
     </tbody>
 </table>

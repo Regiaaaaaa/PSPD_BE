@@ -21,7 +21,7 @@ class MonitoringBukuController extends Controller
                     'penulis' => $item->penulis,
                     'penerbit' => $item->penerbit,
                     'tahun_terbit' => $item->tahun_terbit,
-                    'kategori' => $item->kategori->map(fn($k) => [  // ← array sekarang
+                    'kategori' => $item->kategori->map(fn($k) => [ 
                         'id' => $k->id,
                         'nama' => $k->nama_kategori,
                     ])->toArray(),
@@ -32,6 +32,7 @@ class MonitoringBukuController extends Controller
                         $item->stok_total
                         - $item->stok_tersedia
                         - $item->dalam_perbaikan,
+                        'harga_buku' => $item->harga_buku, 
                     'cover' => $item->cover,
                     'created_at' => $item->created_at,
                 ];
