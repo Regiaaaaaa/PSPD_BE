@@ -18,6 +18,8 @@ use App\Http\Controllers\Api\Operator\PengembalianController;
 use App\Http\Controllers\Api\Operator\DendaController;
 use App\Http\Controllers\Api\Operator\LaporanController;
 use App\Http\Controllers\Api\Operator\MonitoringBukuController;
+use App\Http\Controllers\Api\Operator\KelolaTransaksiController;
+
 use App\Http\Controllers\Api\Users\ProfileController;
 use App\Http\Controllers\Api\Users\TransaksiController;
 use App\Http\Controllers\Api\Users\katalogController;
@@ -132,6 +134,10 @@ Route::middleware(['auth:sanctum', 'role:operator'])->prefix('operator')->group(
 
         Route::get('/laporan/summary/export/excel',[LaporanController::class,'exportSummaryExcel']);
         Route::get('/laporan/summary/export/pdf',[LaporanController::class,'exportSummaryPdf']);
+
+        Route::get('/kelola-transaksi', [KelolaTransaksiController::class, 'index']);
+        Route::patch('/kelola-transaksi/{id}/deadline', [KelolaTransaksiController::class, 'updateDeadline']);
+        Route::patch('/kelola-transaksi/detail/{id}/kembali-normal', [KelolaTransaksiController::class, 'overrideKembaliNormal']);
     });
     
 
