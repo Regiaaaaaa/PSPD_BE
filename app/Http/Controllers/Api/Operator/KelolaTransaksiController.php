@@ -14,7 +14,8 @@ class KelolaTransaksiController extends Controller
     public function index()
     {
         $data = Transaksi::with([
-            'user',
+            'user.siswa',
+            'user.staff',
             'details.buku'
         ])
         ->latest()
@@ -25,6 +26,7 @@ class KelolaTransaksiController extends Controller
             'data' => $data
         ]);
     }
+
     public function updateDeadline(Request $request, $id)
     {
         $request->validate([
@@ -39,6 +41,7 @@ class KelolaTransaksiController extends Controller
             $trx->update([
                 'tgl_deadline' => $request->tgl_deadline
             ]);
+
             foreach ($trx->details as $detail) {
                 if (!$detail->tgl_kembali) continue;
                 if ($detail->status !== 'hilang') {
@@ -53,6 +56,7 @@ class KelolaTransaksiController extends Controller
                     } else {
                         $detail->denda_telat = 0;
                     }
+
                     $detail->total_denda_item =
                         $detail->denda_telat +
                         $detail->denda_kerusakan;
@@ -60,6 +64,7 @@ class KelolaTransaksiController extends Controller
                     $detail->save();
                 }
             }
+
             $total = $trx->details()->sum('total_denda_item');
 
             $trx->update([
@@ -84,13 +89,20 @@ class KelolaTransaksiController extends Controller
             ], 500);
         }
     }
-    public function overrideKembaliNormal($detailId)
+
+   public function overrideKembaliNormal($detailId)
     {
         $detail = DetailTransaksi::with(['transaksi', 'buku'])->findOrFail($detailId);
         $trx = $detail->transaksi;
         $buku = $detail->buku;
 
-        // guard
+        if ($trx->status_denda === 'lunas') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tidak bisa override, denda sudah dibayar'
+            ], 400);
+        }
+
         if ($detail->status !== 'hilang') {
             return response()->json([
                 'success' => false,
@@ -101,14 +113,25 @@ class KelolaTransaksiController extends Controller
         DB::beginTransaction();
         try {
             $buku->increment('stok_total');
-            $buku->increment('stok_tersedia'); 
+            $buku->increment('stok_tersedia');
+
+            $dendaTelat = 0;
+
+            if ($detail->tgl_kembali && $detail->tgl_kembali > $trx->tgl_deadline) {
+                $hari = Carbon::parse($detail->tgl_kembali)
+                    ->diffInDays($trx->tgl_deadline);
+
+                $dendaTelat = $hari * 1000;
+            }
+
             $detail->update([
                 'status' => 'kembali_normal',
-                'denda_telat' => 0,
+                'denda_telat' => $dendaTelat,
                 'denda_kerusakan' => 0,
                 'denda_hilang' => 0,
-                'total_denda_item' => 0,
+                'total_denda_item' => $dendaTelat,
             ]);
+
             $total = $trx->details()->sum('total_denda_item');
 
             $trx->update([
@@ -121,7 +144,7 @@ class KelolaTransaksiController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Berhasil override ke kembali normal, denda dihapus & stok diperbaiki'
+                'message' => 'Berhasil override ke kembali normal, denda disesuaikan & stok diperbaiki'
             ]);
 
         } catch (\Exception $e) {
